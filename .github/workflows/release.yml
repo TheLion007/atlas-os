@@ -1,0 +1,54 @@
+# Release workflow: when a version tag (v*) is pushed, this builds the Windows installer on a
+# GitHub Windows runner and attaches it to a GitHub Release named after the tag.
+# The tag must match `version` in package.json (1.0.0 -> v1.0.0).
+# The installer is NOT code-signed (see README: SmartScreen).
+
+name: Release (Windows installer)
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write # needed to create the Release and attach the installer
+
+jobs:
+  windows-installer:
+    runs-on: windows-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: The tag must match package.json
+        shell: bash
+        run: |
+          pkg="v$(node -p "require('./package.json').version")"
+          if [ "$GITHUB_REF_NAME" != "$pkg" ]; then
+            echo "Tag $GITHUB_REF_NAME does not match package.json version $pkg" >&2
+            exit 1
+          fi
+
+      - run: npm ci
+
+      - name: Checks (types, lint, tests)
+        run: npm run check
+
+      - name: Build the installer
+        run: npm run dist:win
+
+      - name: Publish to GitHub Releases
+        uses: softprops/action-gh-release@v2
+        with:
+          # The installer, plus what the app reads to update itself: latest.yml and the blockmap.
+          files: |
+            release/Atlas-OS-Setup-*.exe
+            release/Atlas-OS-Setup-*.exe.blockmap
+            release/latest.yml
+          generate_release_notes: true
+          fail_on_unmatched_files: true

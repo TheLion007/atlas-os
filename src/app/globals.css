@@ -1,0 +1,783 @@
+@import "tailwindcss";
+
+/*
+ * Atlas OS design tokens — "Atelier": warm paper in light, warm charcoal in dark, one coral accent.
+ * Source of truth: docs/DESIGN-SYSTEM.md. Raw palette lives in `--c-*` (one block per theme);
+ * the Tailwind `--color-*` tokens point at them, so every component re-themes for free.
+ *
+ * The default Tailwind palette, radii and shadows are reset so that only Atlas tokens exist:
+ * `bg-gray-500` or `rounded-xl` simply do not compile. `design-rules.test.ts` additionally
+ * forbids gradients, arbitrary colours and off-scale spacing in the source.
+ */
+
+/* Light is the default; `data-theme="dark"` is set on <html> before first paint (see layout). */
+/* Light is the default; `data-theme="dark"` and `data-pair` are set on <html> before first paint. */
+:root {
+  color-scheme: light;
+  --c-bg: #f4f6fa;
+  --c-panel: #f9fafd;
+  --c-surface: #ffffff;
+  --c-sunk: #e8ecf3;
+  --c-border: #e1e6ee;
+  --c-border-strong: #cfd6e2;
+  --c-fg: #141821;
+  --c-fg-muted: #4a5365;
+  --c-fg-subtle: #667085;
+  --c-accent: #4f60e8;
+  --c-accent-soft: color-mix(in srgb, var(--c-accent) 14%, var(--c-bg));
+  --c-heat-1: color-mix(in srgb, var(--c-accent) 24%, var(--c-bg));
+  --c-heat-2: color-mix(in srgb, var(--c-accent) 48%, var(--c-bg));
+  --c-heat-3: color-mix(in srgb, var(--c-accent) 75%, var(--c-bg));
+  --c-heat-4: var(--c-accent);
+  --c-glow: 0 0 0 4px color-mix(in srgb, var(--c-accent) 22%, transparent);
+  --c-accent-ink: var(--c-accent);
+  --c-on-accent: #ffffff;
+  --c-code: #1b1f2b;
+  --c-code-ink: #eceff6;
+  --c-positive: #23865a;
+  --c-warn: #a87408;
+  --c-critical: #c93550;
+  --c-hover: rgb(20 24 33 / 0.06);
+  --c-selected: rgb(20 24 33 / 0.1);
+  --c-heat-0: rgb(20 24 33 / 0.06);
+  --c-shadow: 0 1px 0 rgb(20 30 60 / 0.05), 0 10px 28px -16px rgb(20 30 60 / 0.3);
+  --c-shadow-up: 0 2px 0 rgb(20 30 60 / 0.04), 0 24px 44px -18px rgb(20 30 60 / 0.4);
+  --c-type-plan: #4d3483;
+  --c-type-project: #2e508a;
+  --c-type-sub_project: #3c647c;
+  --c-type-task: #336e84;
+  --c-type-milestone: #434a74;
+  --c-type-estimate: #378177;
+  --c-type-scenario: #337677;
+  --c-type-location: #444177;
+  --c-type-property: #5e486f;
+  --c-type-decision: #7d3a70;
+  --c-type-risk: #754354;
+  --c-type-note: #68496e;
+  --c-type-document: #684f5a;
+  --c-type-person: #793f50;
+  --c-type-event: #437569;
+  --c-type-memory: #2e728a;
+  --c-type-transaction: #2f8977;
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --c-bg: #121419;
+  --c-panel: #171a20;
+  --c-surface: #1c1f27;
+  --c-sunk: #252933;
+  --c-border: #2f3440;
+  --c-border-strong: #424856;
+  --c-fg: #e9ecf2;
+  --c-fg-muted: #a3a9b8;
+  --c-fg-subtle: #7d8497;
+  --c-accent: #4f60e8;
+  --c-accent-soft: color-mix(in srgb, var(--c-accent) 14%, var(--c-bg));
+  --c-heat-1: color-mix(in srgb, var(--c-accent) 24%, var(--c-bg));
+  --c-heat-2: color-mix(in srgb, var(--c-accent) 48%, var(--c-bg));
+  --c-heat-3: color-mix(in srgb, var(--c-accent) 75%, var(--c-bg));
+  --c-heat-4: var(--c-accent);
+  --c-glow: 0 0 0 4px color-mix(in srgb, var(--c-accent) 22%, transparent);
+  --c-accent-ink: color-mix(in srgb, var(--c-accent) 58%, #ffffff);
+  --c-on-accent: #ffffff;
+  --c-code: #0c0e14;
+  --c-code-ink: #e6e9f2;
+  --c-positive: #5bd08f;
+  --c-warn: #e6c14a;
+  --c-critical: #ff7a8a;
+  --c-hover: rgb(255 255 255 / 0.06);
+  --c-selected: rgb(255 255 255 / 0.1);
+  --c-heat-0: rgb(255 255 255 / 0.06);
+  --c-shadow: 0 1px 0 rgb(0 0 0 / 0.3), 0 12px 30px -16px rgb(0 0 0 / 0.75);
+  --c-shadow-up: 0 2px 0 rgb(0 0 0 / 0.25), 0 26px 46px -18px rgb(0 0 0 / 0.85);
+  --c-type-plan: #ccc3e0;
+  --c-type-project: #a4b8da;
+  --c-type-sub_project: #648aa1;
+  --c-type-task: #7fadbe;
+  --c-type-milestone: #7d8aa8;
+  --c-type-estimate: #8fc2bb;
+  --c-type-scenario: #4a948f;
+  --c-type-location: #908eb3;
+  --c-type-property: #7d6c8a;
+  --c-type-decision: #cdaac6;
+  --c-type-risk: #99707e;
+  --c-type-note: #ae9eb1;
+  --c-type-document: #8c8085;
+  --c-type-person: #b18693;
+  --c-type-event: #5b8178;
+  --c-type-memory: #a1d4e6;
+  --c-type-transaction: #c6e5df;
+}
+
+@theme static {
+  --color-*: initial;
+
+  --color-bg: var(--c-bg);
+  --color-panel: var(--c-panel);
+  --color-surface: var(--c-surface);
+  --color-sunk: var(--c-sunk);
+  --color-border: var(--c-border);
+  --color-border-strong: var(--c-border-strong);
+  --color-accent: var(--c-accent);
+  --color-accent-soft: var(--c-accent-soft);
+  --color-accent-ink: var(--c-accent-ink);
+  --color-on-accent: var(--c-on-accent);
+  --color-code: var(--c-code);
+  --color-code-ink: var(--c-code-ink);
+  --color-positive: var(--c-positive);
+  --color-warn: var(--c-warn);
+  --color-critical: var(--c-critical);
+  --color-fg: var(--c-fg);
+  --color-fg-muted: var(--c-fg-muted);
+  --color-fg-subtle: var(--c-fg-subtle);
+  --color-hover: var(--c-hover);
+  --color-selected: var(--c-selected);
+  --color-heat-0: var(--c-heat-0);
+  --color-heat-1: var(--c-heat-1);
+  --color-heat-2: var(--c-heat-2);
+  --color-heat-3: var(--c-heat-3);
+  --color-heat-4: var(--c-heat-4);
+
+  /* Object-type palette (src/design/object-types.ts): one set per theme, same hues. */
+  --color-type-plan: var(--c-type-plan);
+  --color-type-project: var(--c-type-project);
+  --color-type-sub_project: var(--c-type-sub_project);
+  --color-type-task: var(--c-type-task);
+  --color-type-milestone: var(--c-type-milestone);
+  --color-type-estimate: var(--c-type-estimate);
+  --color-type-scenario: var(--c-type-scenario);
+  --color-type-location: var(--c-type-location);
+  --color-type-property: var(--c-type-property);
+  --color-type-decision: var(--c-type-decision);
+  --color-type-risk: var(--c-type-risk);
+  --color-type-note: var(--c-type-note);
+  --color-type-document: var(--c-type-document);
+  --color-type-person: var(--c-type-person);
+  --color-type-event: var(--c-type-event);
+  --color-type-memory: var(--c-type-memory);
+  --color-type-transaction: var(--c-type-transaction);
+
+  /* Type: Instrument Sans for text, Bricolage Grotesque for titles, JetBrains Mono for numbers. */
+  --font-sans: var(--font-instrument), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-bricolage), var(--font-instrument), ui-sans-serif, sans-serif;
+  --font-mono: var(--font-jetbrains), ui-monospace, "SFMono-Regular", Menlo, monospace;
+
+  /* Radius: 10 controls, 16 cards. Nothing else (plus full and none). */
+  --radius-*: initial;
+  --radius-control: 12px;
+  --radius-card: 20px;
+
+  /* Soft, warm depth: the only shadows. */
+  --shadow-*: initial;
+  --inset-shadow-*: initial;
+  --drop-shadow-*: initial;
+  --shadow-card: var(--c-shadow);
+  --shadow-pop: var(--c-shadow-up);
+  --shadow-glow: var(--c-glow);
+
+  /* Motion: hover 120ms, panels 220ms, springy pops 380ms. */
+  --duration-hover: 120ms;
+  --duration-panel: 220ms;
+  --ease-state: cubic-bezier(0.2, 0, 0, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  /* Shell geometry */
+  --sidebar-w: 248px;
+  --sidebar-w-collapsed: 56px;
+  --topbar-h: 64px;
+  --peek-w: 440px;
+}
+
+/* Spacing scale is Tailwind's 4px step: 1=4 · 2=8 · 3=12 · 4=16 · 6=24 · 8=32 · 12=48 · 18=72 */
+@theme {
+  --spacing: 4px;
+}
+
+html,
+body {
+  background-color: var(--color-bg);
+  color: var(--color-fg);
+  transition:
+    background-color 0.35s,
+    color 0.35s;
+}
+
+body {
+  font-family: var(--font-sans);
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--font-display);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+:root[data-theme="dark"] * {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-border) transparent;
+}
+
+/* Focus rings use the accent: one coral thing on screen is the thing you are on. */
+:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+::selection {
+  background: var(--color-accent-soft);
+}
+
+/* Numbers, amounts, dates and ids are always mono with tabular numerals. */
+@utility num {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Small mono index label ("01 — THESIS"). */
+@utility label {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 16px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-fg-muted);
+}
+
+/* The person turned animations off in Settings (the system preference is handled below). */
+:root[data-motion="off"] *,
+:root[data-motion="off"] *::before,
+:root[data-motion="off"] *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Panels slide in over 220ms (--duration-panel). Only on a state change: opening a sheet. */
+@keyframes sheet-in-right {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: none;
+  }
+}
+@keyframes sheet-in-left {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: none;
+  }
+}
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@utility sheet-right {
+  animation: sheet-in-right var(--duration-panel) var(--ease-state);
+}
+@utility sheet-left {
+  animation: sheet-in-left var(--duration-panel) var(--ease-state);
+}
+@utility fade-in {
+  animation: fade-in var(--duration-panel) var(--ease-state);
+}
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@utility rise-in {
+  animation: rise-in var(--duration-panel) var(--ease-state);
+}
+
+/* ── Map pins (DOM markers on the globe) ───────────────────────────────────────────────────
+   Flat, hairline, no shadows. Sand appears only on the selected pin: the one focal element. */
+.atlas-pin {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--color-fg);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+.atlas-pin__dot {
+  display: block;
+  width: 12px;
+  height: 12px;
+  border-radius: 9999px;
+  background: var(--pin-color, var(--color-fg-muted));
+  border: 2px solid var(--color-bg);
+  box-sizing: content-box;
+  transition: transform var(--duration-hover) var(--ease-state);
+}
+.atlas-pin:hover .atlas-pin__dot {
+  transform: scale(1.25);
+}
+.atlas-pin[data-group="true"] .atlas-pin__dot {
+  width: 20px;
+  height: 20px;
+}
+.atlas-pin__count {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-plex-mono), monospace;
+  font-size: 11px;
+  color: var(--color-bg);
+  pointer-events: none;
+}
+.atlas-pin__label {
+  position: absolute;
+  left: 100%;
+  margin-left: 8px;
+  white-space: nowrap;
+  color: var(--color-fg);
+  paint-order: stroke fill;
+  -webkit-text-stroke: 4px var(--color-bg);
+  pointer-events: none;
+}
+.atlas-pin[data-selected="true"] .atlas-pin__dot {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 3px;
+}
+.atlas-pin[data-selected="true"]::after {
+  content: "";
+  position: absolute;
+  left: -6px;
+  top: -6px;
+  width: 24px;
+  height: 24px;
+  border-radius: 9999px;
+  border: 1.5px solid var(--color-accent);
+  animation: pin-pulse 1.6s var(--ease-state) 2;
+  pointer-events: none;
+}
+@keyframes pin-pulse {
+  from {
+    opacity: 0.9;
+    transform: scale(0.8);
+  }
+  to {
+    opacity: 0;
+    transform: scale(2.4);
+  }
+}
+.atlas-pin:focus-visible {
+  outline: 2px solid var(--color-fg);
+  outline-offset: 4px;
+  border-radius: 9999px;
+}
+
+/*
+ * Memory Graph constellation labels (constellation-engine.ts). They sit over the light, never
+ * hide it: a very dark translucent plate, a hairline, a small dot in the cluster's light. No
+ * blur and no shadow (the blueprint has neither): the glow belongs to the network, not the UI.
+ */
+.cst-layer {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+.cst-label,
+.cst-cluster {
+  position: absolute;
+  left: 0;
+  top: 0;
+  opacity: 0;
+  pointer-events: none;
+  will-change: transform, opacity;
+  transition: opacity 260ms var(--ease-state);
+  white-space: nowrap;
+}
+.cst-label.is-shown,
+.cst-cluster.is-shown {
+  opacity: 1;
+  pointer-events: auto;
+  cursor: pointer;
+}
+.cst-label {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  max-width: 260px;
+  padding: 5px 9px 5px 8px;
+  border: 1px solid rgb(231 229 224 / 0.09);
+  border-radius: 6px;
+  background: rgb(8 9 11 / 0.72);
+  transition:
+    opacity 260ms var(--ease-state),
+    border-color var(--duration-hover) var(--ease-state),
+    background-color var(--duration-hover) var(--ease-state);
+}
+.cst-label[data-kind="satellite"] {
+  padding: 3px 7px;
+  background: rgb(8 9 11 / 0.6);
+}
+.cst-label:hover,
+.cst-label.is-near {
+  border-color: rgb(231 229 224 / 0.18);
+}
+.cst-label.is-focus {
+  border-color: rgb(231 229 224 / 0.34);
+  background: rgb(8 9 11 / 0.78);
+}
+.cst-dot {
+  flex: none;
+  width: 6px;
+  height: 6px;
+  margin-top: 5px;
+  border-radius: 9999px;
+  background: var(--cst-c);
+}
+.cst-body {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+}
+.cst-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--color-fg);
+}
+.cst-label[data-kind="satellite"] .cst-title {
+  font-size: 11px;
+  color: var(--color-fg-muted);
+}
+.cst-meta {
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  line-height: 13px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-fg-muted);
+  transition: opacity 260ms var(--ease-state);
+}
+.cst-meta:empty {
+  display: none;
+}
+/* Secondary information only once the zoom is close enough to read it. */
+.cst-layer[data-detail="0"] .cst-meta,
+.cst-layer[data-detail="1"] .cst-meta {
+  display: none;
+}
+.cst-layer .cst-label.is-focus .cst-meta,
+.cst-layer .cst-label.is-near .cst-meta {
+  display: block;
+}
+.cst-cluster {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  line-height: 14px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--cst-c) 55%, var(--color-fg) 45%);
+}
+.cst-count {
+  color: var(--color-fg-muted);
+  opacity: 0.7;
+}
+@media (prefers-reduced-motion: reduce) {
+  .cst-label,
+  .cst-cluster,
+  .cst-meta {
+    transition: none;
+  }
+}
+
+/* ── Satisfaction layer: pops, toasts, confetti, the mascot ───────────────────────────────── */
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@utility pop-in {
+  animation: pop-in 0.28s var(--ease-spring);
+}
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(20px) scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@utility toast-in {
+  animation: toast-in 0.38s var(--ease-spring);
+}
+@keyframes confetti {
+  0% {
+    transform: translate(0, 0) rotate(0);
+  }
+  75% {
+    opacity: 1;
+  }
+  100% {
+    transform: translate(var(--dx), calc(var(--dy) + 70px)) rotate(var(--r));
+    opacity: 0;
+  }
+}
+@keyframes mascot-bob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-3px);
+  }
+}
+@keyframes mascot-breathe {
+  0%,
+  100% {
+    transform: scale(1, 1);
+  }
+  50% {
+    transform: scale(1.03, 0.97);
+  }
+}
+@keyframes mascot-cheer {
+  0% {
+    transform: translateY(0) scale(1);
+  }
+  30% {
+    transform: translateY(-14px) scale(0.94, 1.08);
+  }
+  55% {
+    transform: translateY(0) scale(1.1, 0.9);
+  }
+  75% {
+    transform: translateY(-4px) scale(0.98, 1.02);
+  }
+  100% {
+    transform: translateY(0) scale(1);
+  }
+}
+@keyframes mascot-blink {
+  0%,
+  93%,
+  100% {
+    transform: scaleY(1);
+  }
+  96% {
+    transform: scaleY(0.08);
+  }
+}
+@keyframes mascot-z {
+  0% {
+    opacity: 0;
+    transform: translate(0, 0) scale(0.6);
+  }
+  30% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(10px, -18px) scale(1.1);
+  }
+}
+
+/* A pressed button gives a little: the satisfaction starts before the click lands. */
+@layer base {
+  button:not(:disabled):active,
+  [role="button"]:active {
+    transform: scale(0.97);
+  }
+}
+
+@keyframes bar-grow {
+  from {
+    transform: scaleY(0);
+    opacity: 0;
+  }
+  to {
+    transform: scaleY(1);
+    opacity: 1;
+  }
+}
+
+/* A screen change: the new screen rises and fades in (the design's own 450 ms curve). */
+@keyframes screen-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@utility screen-in {
+  animation: screen-in 0.45s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+/* Colour pairs (provisional: one is kept, the others are removed). */
+:root[data-pair="teal"]:not([data-theme="dark"]) {
+  color-scheme: light;
+  --c-bg: #f1f6f7;
+  --c-panel: #f7fafb;
+  --c-surface: #ffffff;
+  --c-sunk: #e5eef0;
+  --c-border: #dde7ea;
+  --c-border-strong: #c9d7db;
+  --c-fg: #10191c;
+  --c-fg-muted: #3f5258;
+  --c-fg-subtle: #5b6f76;
+  --c-accent: #087f7c;
+  --c-accent-soft: color-mix(in srgb, var(--c-accent) 14%, var(--c-bg));
+  --c-heat-1: color-mix(in srgb, var(--c-accent) 24%, var(--c-bg));
+  --c-heat-2: color-mix(in srgb, var(--c-accent) 48%, var(--c-bg));
+  --c-heat-3: color-mix(in srgb, var(--c-accent) 75%, var(--c-bg));
+  --c-heat-4: var(--c-accent);
+  --c-glow: 0 0 0 4px color-mix(in srgb, var(--c-accent) 22%, transparent);
+  --c-accent-ink: var(--c-accent);
+  --c-on-accent: #ffffff;
+  --c-positive: #23865a;
+  --c-warn: #a87408;
+  --c-critical: #c93550;
+  --c-hover: rgb(20 24 33 / 0.06);
+  --c-selected: rgb(20 24 33 / 0.1);
+  --c-heat-0: rgb(20 24 33 / 0.06);
+  --c-shadow: 0 1px 0 rgb(10 40 50 / 0.05), 0 10px 28px -16px rgb(10 40 50 / 0.3);
+  --c-shadow-up: 0 2px 0 rgb(10 40 50 / 0.04), 0 24px 44px -18px rgb(10 40 50 / 0.4);
+}
+:root[data-pair="teal"][data-theme="dark"] {
+  color-scheme: dark;
+  --c-bg: #0c1322;
+  --c-panel: #101a2d;
+  --c-surface: #162033;
+  --c-sunk: #1e2c45;
+  --c-border: #263652;
+  --c-border-strong: #36496b;
+  --c-fg: #e6edf7;
+  --c-fg-muted: #9aabc4;
+  --c-fg-subtle: #7186a6;
+  --c-accent: #087f7c;
+  --c-accent-soft: color-mix(in srgb, var(--c-accent) 14%, var(--c-bg));
+  --c-heat-1: color-mix(in srgb, var(--c-accent) 24%, var(--c-bg));
+  --c-heat-2: color-mix(in srgb, var(--c-accent) 48%, var(--c-bg));
+  --c-heat-3: color-mix(in srgb, var(--c-accent) 75%, var(--c-bg));
+  --c-heat-4: var(--c-accent);
+  --c-glow: 0 0 0 4px color-mix(in srgb, var(--c-accent) 22%, transparent);
+  --c-accent-ink: color-mix(in srgb, var(--c-accent) 58%, #ffffff);
+  --c-on-accent: #ffffff;
+  --c-positive: #5bd08f;
+  --c-warn: #e6c14a;
+  --c-critical: #ff7a8a;
+  --c-hover: rgb(255 255 255 / 0.06);
+  --c-selected: rgb(255 255 255 / 0.1);
+  --c-heat-0: rgb(255 255 255 / 0.06);
+  --c-shadow: 0 1px 0 rgb(0 0 0 / 0.3), 0 12px 30px -16px rgb(0 0 0 / 0.75);
+  --c-shadow-up: 0 2px 0 rgb(0 0 0 / 0.25), 0 26px 46px -18px rgb(0 0 0 / 0.85);
+}
+:root[data-pair="violet"]:not([data-theme="dark"]) {
+  color-scheme: light;
+  --c-bg: #f6f5fa;
+  --c-panel: #faf9fd;
+  --c-surface: #ffffff;
+  --c-sunk: #ecebf3;
+  --c-border: #e4e2ee;
+  --c-border-strong: #d2cfe1;
+  --c-fg: #17151f;
+  --c-fg-muted: #4d4a5e;
+  --c-fg-subtle: #6a677e;
+  --c-accent: #7c4ff0;
+  --c-accent-soft: color-mix(in srgb, var(--c-accent) 14%, var(--c-bg));
+  --c-heat-1: color-mix(in srgb, var(--c-accent) 24%, var(--c-bg));
+  --c-heat-2: color-mix(in srgb, var(--c-accent) 48%, var(--c-bg));
+  --c-heat-3: color-mix(in srgb, var(--c-accent) 75%, var(--c-bg));
+  --c-heat-4: var(--c-accent);
+  --c-glow: 0 0 0 4px color-mix(in srgb, var(--c-accent) 22%, transparent);
+  --c-accent-ink: var(--c-accent);
+  --c-on-accent: #ffffff;
+  --c-positive: #23865a;
+  --c-warn: #a87408;
+  --c-critical: #c93550;
+  --c-hover: rgb(20 24 33 / 0.06);
+  --c-selected: rgb(20 24 33 / 0.1);
+  --c-heat-0: rgb(20 24 33 / 0.06);
+  --c-shadow: 0 1px 0 rgb(40 30 70 / 0.05), 0 10px 28px -16px rgb(40 30 70 / 0.3);
+  --c-shadow-up: 0 2px 0 rgb(40 30 70 / 0.04), 0 24px 44px -18px rgb(40 30 70 / 0.4);
+}
+:root[data-pair="violet"][data-theme="dark"] {
+  color-scheme: dark;
+  --c-bg: #14131a;
+  --c-panel: #18171f;
+  --c-surface: #1d1c26;
+  --c-sunk: #272531;
+  --c-border: #302e3e;
+  --c-border-strong: #43405a;
+  --c-fg: #ecebf5;
+  --c-fg-muted: #a8a5bd;
+  --c-fg-subtle: #7f7c97;
+  --c-accent: #7c4ff0;
+  --c-accent-soft: color-mix(in srgb, var(--c-accent) 14%, var(--c-bg));
+  --c-heat-1: color-mix(in srgb, var(--c-accent) 24%, var(--c-bg));
+  --c-heat-2: color-mix(in srgb, var(--c-accent) 48%, var(--c-bg));
+  --c-heat-3: color-mix(in srgb, var(--c-accent) 75%, var(--c-bg));
+  --c-heat-4: var(--c-accent);
+  --c-glow: 0 0 0 4px color-mix(in srgb, var(--c-accent) 22%, transparent);
+  --c-accent-ink: color-mix(in srgb, var(--c-accent) 58%, #ffffff);
+  --c-on-accent: #ffffff;
+  --c-positive: #5bd08f;
+  --c-warn: #e6c14a;
+  --c-critical: #ff7a8a;
+  --c-hover: rgb(255 255 255 / 0.06);
+  --c-selected: rgb(255 255 255 / 0.1);
+  --c-heat-0: rgb(255 255 255 / 0.06);
+  --c-shadow: 0 1px 0 rgb(0 0 0 / 0.3), 0 12px 30px -16px rgb(0 0 0 / 0.75);
+  --c-shadow-up: 0 2px 0 rgb(0 0 0 / 0.25), 0 26px 46px -18px rgb(0 0 0 / 0.85);
+}
+
+@keyframes slide-in {
+  from {
+    opacity: 0;
+    transform: translateX(40px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}

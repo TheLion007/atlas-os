@@ -1,0 +1,83 @@
+# Atlas OS desktop installer. Windows only for now; the mac and linux blocks below are ready to
+# be filled in when those platforms come (the app code is already cross-platform).
+appId: com.atlasos.app
+productName: Atlas OS
+copyright: Copyright © 2026 TheLion007
+directories:
+  output: release
+  buildResources: build
+
+# What goes inside the app archive: only the small Electron shell. The Next server, its
+# dependencies and the database migrations travel as plain folders (extraResources), because the
+# server runs as its own process and reads them from disk.
+files:
+  - electron/**/*
+  - package.json
+  - "!**/*.map"
+  - "!node_modules"
+  - "!node_modules/**/*"
+asar: true
+
+extraResources:
+  - from: .next/standalone/server.js
+    to: server/server.js
+  - from: .next/standalone/package.json
+    to: server/package.json
+  - from: .next/standalone/.next
+    to: server/.next
+    filter: ["**/*", "!cache/**", "!diagnostics/**", "!dev/**"]
+  # Turbopack's own aliases for packages kept out of the bundle (e.g. the database engine).
+  - from: .next/standalone/.next/node_modules
+    to: server/.next/node_modules
+  - from: .next/standalone/node_modules
+    to: server/node_modules
+    filter: ["**/*"]
+  - from: .next/standalone/public
+    to: server/public
+  - from: db/migrations
+    to: db/migrations
+  # electron-updater and its dependencies (staged by scripts/stage-updater.mjs).
+  - from: .updater-stage/node_modules
+    to: updater/node_modules
+
+# ---- Windows ----------------------------------------------------------------------------------
+win:
+  target:
+    - target: nsis
+      arch: [x64]
+  icon: build/icon.png
+  # The first versions are not code-signed (a certificate is a later step): Windows SmartScreen
+  # will say so at the first launch. See docs/DESKTOP.md.
+
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: always
+  createStartMenuShortcut: true
+  shortcutName: Atlas OS
+  # Uninstalling removes the program, never the data (%APPDATA%\Atlas OS).
+  deleteAppDataOnUninstall: false
+  language: "1036"
+  installerLanguages: [fr_FR]
+  artifactName: Atlas-OS-Setup-${version}.${ext}
+
+# ---- macOS and Linux (later) --------------------------------------------------------------------
+# mac:
+#   target: dmg
+#   category: public.app-category.productivity
+#   icon: build/icon.icns
+# linux:
+#   target: [AppImage, deb]
+#   category: Office
+#   icon: build/icon.png
+
+# ---- Updates and publishing -----------------------------------------------------------------------
+# `npm run dist:win` passes --publish never: building uploads nothing. The release workflow
+# (.github/workflows/release.yml) attaches the installer, latest.yml and the blockmap to the GitHub
+# Release of a version tag; the installed app reads latest.yml from there (electron/updater.cjs).
+publish:
+  provider: github
+  owner: TheLion007
+  repo: atlas-os
+  releaseType: release
