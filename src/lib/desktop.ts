@@ -37,11 +37,58 @@ export interface AtlasUpdates {
   onState(callback: (state: UpdateState) => void): () => void;
 }
 
+/** The automatic backup settings kept on this device (see electron/data-location.cjs). */
+export interface AutoBackupInfo {
+  enabled: boolean;
+  folder: string | null;
+  lastDay: string | null;
+  lastPath: string | null;
+  lastError: "folder_unreachable" | "failed" | null;
+}
+
+/** Where the data lives and how the app was opened (see "Mes données" in Settings). */
+export interface DataInfo {
+  dataRoot: string;
+  dbDir: string;
+  defaultRoot: string;
+  isCustom: boolean;
+  /** Another PC has the data open: this window only reads, and nothing is saved. */
+  readOnly: boolean;
+  device: string;
+  autoBackup: AutoBackupInfo;
+  importNotice: { ok: boolean; reason?: string; safetyBackup?: string } | null;
+}
+
+export type LocationMode = "move" | "use" | "replace";
+export type LocationResult =
+  { ok: true; mode: LocationMode; hadData?: boolean } | { ok: false; code: string };
+
+export interface AtlasData {
+  info(): Promise<DataInfo>;
+  importNotice(): Promise<DataInfo["importNotice"]>;
+  chooseSavePath(): Promise<string | null>;
+  chooseOpenPath(): Promise<string | null>;
+  chooseFolder(title: string): Promise<string | null>;
+  previewLocation(
+    target: string,
+  ): Promise<{ ok: true; hasData: boolean; empty: boolean } | { ok: false; code: string }>;
+  applyLocation(target: string, mode: LocationMode): Promise<LocationResult>;
+  restart(): Promise<boolean>;
+  savePrefs(keys: Record<string, string>): Promise<string | null>;
+  setAutoBackup(
+    enabled: boolean,
+    folder?: string | null,
+  ): Promise<{ ok: true; info: DataInfo } | { ok: false; code: string }>;
+  runAutoBackup(): Promise<{ ok: boolean; code?: string; path?: string; skipped?: boolean }>;
+}
+
 export interface AtlasDesktop {
   getInfo(): Promise<DesktopInfo>;
   openDataFolder(): Promise<string>;
   /** Absent from an older desktop shell. */
   updates?: AtlasUpdates;
+  /** Absent from an older desktop shell. */
+  data?: AtlasData;
 }
 
 declare global {
