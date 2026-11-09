@@ -20,6 +20,14 @@ describe("relationForChild", () => {
     });
   });
 
+  it("holds the things added inside a sub-project through containment, as in a project", () => {
+    for (const parent of ["project", "sub_project"] as const) {
+      for (const child of ["task", "milestone", "decision", "risk"] as const) {
+        expect(relationForChild(parent, child)).toEqual({ kind: "contains", direction: "in" });
+      }
+    }
+  });
+
   it("locates things at a location, whichever end is the location", () => {
     // A project created at a place: the project is the source of located_at.
     expect(relationForChild("location", "project")).toEqual({

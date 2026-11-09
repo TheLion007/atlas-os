@@ -97,3 +97,24 @@ describe("document form", () => {
     expect(built.input?.details).not.toHaveProperty("storagePath");
   });
 });
+
+describe("adding something from a sub-project", () => {
+  const sub = { id: "s1", type: "sub_project" as const };
+  const FILL: Record<string, Record<string, string>> = {
+    task: {},
+    milestone: { date: "2027-01-15" },
+    decision: { question: "Which colour?" },
+    risk: { probability: "3", impact: "3" },
+  };
+
+  for (const type of ["task", "milestone", "decision", "risk"] as const) {
+    it(`a ${type} is held by the sub-project (a "contains" link, never a plain reference)`, () => {
+      const v = initialValues(type);
+      v.fields = { ...v.fields, title: "From the sub-project", ...FILL[type] };
+      v.relations = { parent: sub.id };
+      const built = buildObject(type, v, lookup([sub]));
+      expect(built.ok).toBe(true);
+      expect(built.relations).toEqual([{ kind: "contains", direction: "in", other: sub.id }]);
+    });
+  }
+});
