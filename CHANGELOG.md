@@ -3,6 +3,18 @@
 Versions are listed newest first. Each entry is in English, then in French.
 Les versions sont listées de la plus récente à la plus ancienne. Chaque entrée est en anglais, puis en français.
 
+## 1.1.1 — 2026-11-09 — Sub-projects / Sous-projets
+
+### English
+
+- A sub-project now has the same interface as a project: the same header and the same tabs (Tasks, Notes, Vault, Timeline, Budget and risks, plus the Overview).
+- A task attached to two containers (for example a project and its sub-project) is no longer counted twice in the project's progress.
+
+### Français
+
+- Un sous-projet a maintenant la même interface qu'un projet : le même en-tête et les mêmes onglets (Tâches, Notes, Coffre, Timeline, Budget et risques, plus l'Aperçu).
+- Une tâche rattachée à deux conteneurs (par exemple un projet et son sous-projet) n'est plus comptée deux fois dans la progression du projet.
+
 ## 1.1.0 — 2026-11-09 — "My data" / « Mes données »
 
 ### English
