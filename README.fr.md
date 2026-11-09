@@ -19,7 +19,8 @@
 - **Minuteur** : sessions de concentration liées à tes tâches.
 - **Notes** et **Historique** : ce que tu écris et ce qui a changé.
 - **Assistant IA local (Ctrl+J)** : écris en vrac, il propose une structure à valider (voir plus bas).
-- **Palette Ctrl+K** pour aller partout au clavier.
+- **Mes données (Paramètres)** : export et import de sauvegardes, choix de l'emplacement de tes données, sauvegarde automatique quotidienne (voir plus bas).
+- **Palette de commandes (Ctrl+K)** pour aller partout au clavier.
 - **Thèmes** (Indigo, Lagon, Violet), **profils sonores** (Doux, Normal, Cristallin) et une mascotte.
 - Interface en **français** et en **anglais** (à changer dans **Paramètres → Langue et espace de travail**).
 
@@ -50,7 +51,28 @@ Le pare-feu Windows peut aussi demander une fois s'il doit autoriser l'applicati
 
 ### Où sont tes données ?
 
-Dans `%APPDATA%\Atlas OS`. Désinstaller ou mettre à jour ne les supprime **jamais**. Pour faire une sauvegarde, copie ce dossier (application fermée).
+Par défaut dans `%APPDATA%\Atlas OS`, mais tu peux choisir un autre dossier (voir plus bas). Désinstaller ou mettre à jour ne les supprime **jamais**.
+
+## Mes données : sauvegardes, dossier de données, deux PC
+
+Tout se passe dans **Paramètres → Mes données**. Tout reste **100 % local** : aucun compte, aucun serveur, rien ne quitte ton PC.
+
+- **Export et import.** _Exporter mes données_ crée un seul fichier `.atlasbackup` (projets, tâches, notes, historique de travail, documents du Coffre avec leurs fichiers, minuteur, réglages, mascotte, préférences). Tu choisis où l'enregistrer. _Importer_ vérifie d'abord le fichier, montre ce qu'il contient, puis propose deux modes :
+  - **Fusionner** : ajoute ce qui manque. Si un élément existe des deux côtés, le plus récent est gardé. Rien n'est supprimé.
+  - **Remplacer** : tes données actuelles sont remplacées par celles de la sauvegarde (une confirmation claire est demandée avant).
+
+  Avant tout import, Atlas OS **fait automatiquement une copie de sécurité** de tes données actuelles (dans `sauvegardes\securite`, dans ton dossier de données). Si un import échoue, l'état précédent est remis en place.
+
+- **Dossier de données.** _Emplacement des données → Changer…_ te laisse tout stocker dans le dossier de ton choix, par exemple un dossier **OneDrive, Google Drive, Dropbox ou Syncthing**, pour garder deux PC à jour. Atlas OS demande s'il faut déplacer tes données existantes ou utiliser celles déjà présentes dans ce dossier (pour ton second PC). Tant qu'Atlas OS est ouvert, il laisse un petit fichier verrou dans le dossier : si tu ouvres le même dossier sur un autre PC, tu vois **« Atlas OS est déjà ouvert sur [appareil] »** et tu peux choisir lecture seule, forcer l'ouverture, ou quitter.
+
+- **Sauvegarde automatique quotidienne.** Active-la, choisis un dossier, et Atlas OS écrit un `.atlasbackup` par jour en gardant les **7 derniers**.
+
+### Limites connues
+
+- La synchronisation par un service cloud **n'a pas été testée avec un vrai service** (OneDrive, Google Drive, Dropbox, Syncthing) : elle l'a été avec des dossiers ordinaires.
+- Le **journal d'activité** et les **préférences** ne sont pas fusionnés en mode _Fusionner_ (les préférences reviennent avec _Remplacer_).
+- Après un arrêt brutal (plantage, coupure de courant), le verrou reste actif **jusqu'à 2 minutes** ; ensuite un autre PC peut ouvrir le dossier normalement.
+- Deux PC ne doivent pas travailler en même temps sur le même dossier : la lecture seule sert à regarder, pas à modifier.
 
 ### Mises à jour automatiques
 

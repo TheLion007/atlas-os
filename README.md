@@ -21,6 +21,7 @@
 - **Timer**: focus sessions tied to your tasks.
 - **Notes** and **History**: what you write and what has changed.
 - **Local AI assistant (Ctrl+J)**: write things down loosely and it proposes a structure for you to approve (see below).
+- **My data (Settings)**: export and import backups, choose where your data lives, automatic daily backup (see below).
 - **Command palette (Ctrl+K)** to go anywhere from the keyboard.
 - **Themes** (Indigo, Lagoon, Violet), **sound profiles** (Soft, Normal, Crystal) and a mascot.
 
@@ -51,7 +52,28 @@ The Windows firewall may also ask once whether to allow the app: its internal se
 
 ### Where is my data?
 
-In `%APPDATA%\Atlas OS`. Uninstalling or updating **never** deletes it. To make a backup, copy that folder (with the app closed).
+By default in `%APPDATA%\Atlas OS`, but you can choose another folder (see below). Uninstalling or updating **never** deletes it.
+
+## My data: backups, data folder, two PCs
+
+Everything is in **Settings → My data**. It all stays **100% local**: no account, no server, nothing leaves your PC.
+
+- **Export and import.** _Export my data_ creates one `.atlasbackup` file (projects, tasks, notes, work history, Vault documents with their files, timer, settings, mascot, preferences). You choose where to save it. _Import_ checks the file first, shows what is inside, then offers two modes:
+  - **Merge**: adds what is missing. If an item exists on both sides, the most recent one is kept. Nothing is deleted.
+  - **Replace**: your current data is replaced by the backup (a clear confirmation is asked first).
+
+  Before any import, Atlas OS **automatically makes a safety copy** of your current data (in `sauvegardes\securite` inside your data folder). If an import fails, the previous state is put back.
+
+- **Data folder.** _Data location → Change…_ lets you store everything in a folder of your choice, for example a **OneDrive, Google Drive, Dropbox or Syncthing** folder, to keep two PCs up to date. Atlas OS asks whether to move your existing data there or to use the data already in that folder (for your second PC). While Atlas OS is open it leaves a small lock file in the folder: if you open the same folder on another PC, you get **"Atlas OS is already open on [device]"** and can choose read-only, force opening, or quit.
+
+- **Daily automatic backup.** Turn it on, choose a folder, and Atlas OS writes one `.atlasbackup` a day and keeps the **last 7**.
+
+### Known limits
+
+- Syncing through a cloud service has **not been tested with a real service** (OneDrive, Google Drive, Dropbox, Syncthing): it was tested with ordinary folders.
+- The **activity log** and the **preferences** are not merged in _Merge_ mode (preferences come back with _Replace_).
+- After a sudden stop (crash, power cut), the lock stays active for **up to 2 minutes**; after that another PC can open the folder normally.
+- Two PCs must not work at the same time on the same folder: use the read-only mode to look, not to edit.
 
 ### Automatic updates
 

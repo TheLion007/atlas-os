@@ -84,6 +84,43 @@ envoie, en plus de l'installateur, `latest.yml` et le fichier `.blockmap` : l'ap
   téléchargement interrompu, fichier incomplet, ou vérification échouée ; les données de la personne
   ne sont jamais en danger.
 
+## Mes données : sauvegardes, dossier de données, deux PC
+
+**Paramètres → Mes données** (application de bureau) regroupe trois choses.
+
+- **Export / import.** _Exporter mes données_ écrit un seul fichier `.atlasbackup` (un zip renommé) avec
+  tout : `manifest.json` (version d'Atlas OS, date, nom de l'appareil, nombre d'éléments par catégorie),
+  `database/pgdata.tar.gz` (toute la base : projets, tâches, notes, historique de travail, réglages et
+  documents du Coffre avec leurs fichiers), `preferences.json` (thème, sons, mascotte, minuteur, choix de
+  l'assistant) et une copie lisible de chaque fichier du Coffre dans `documents/`. _Importer_ vérifie
+  d'abord le fichier (zip valide, manifeste, somme de contrôle, pas fait par une version plus récente,
+  base lisible ; une base plus ancienne est migrée automatiquement), montre son contenu, puis propose
+  **Fusionner** (ajoute ce qui manque ; la version la plus récente d'un élément commun l'emporte ; le tout
+  en une seule transaction) ou **Remplacer** (irréversible depuis l'application, donc une confirmation
+  explicite). Une **sauvegarde de sécurité** des données actuelles est toujours écrite avant, dans
+  `<dossier de données>/sauvegardes/securite/`. Un remplacement se termine au prochain démarrage (deux
+  renommages) ; les données précédentes restent à côté des nouvelles tant qu'elles n'ont pas démarré, et
+  sont remises en place sinon.
+- **Emplacement des données.** Le dossier de données est par défaut `%APPDATA%\Atlas OS` et peut être
+  n'importe quel dossier, par exemple OneDrive, Google Drive, Dropbox ou Syncthing. Le choix est gardé
+  dans `location.json` dans `%APPDATA%\Atlas OS` (il reste sur l'appareil). Au changement, les données
+  sont _déplacées_ (copiées, vérifiées, puis retirées de l'ancien dossier), ou le dossier est _utilisé tel
+  quel_ (un deuxième PC qui pointe vers un dossier déjà rempli) ; remplacer les données d'un dossier les
+  met de côté, sans jamais les supprimer.
+- **Sauvegarde automatique.** Un `.atlasbackup` par jour dans un dossier choisi
+  (`AtlasOS-sauvegarde-auto-AAAA-MM-JJ`), en gardant les 7 plus récents. Seuls les fichiers qui suivent
+  exactement ce nom sont jamais supprimés.
+
+**Deux PC, un dossier.** Tant qu'Atlas OS est ouvert, il tient à jour `atlas.lock` dans le dossier de
+données (nom de l'appareil, heure) toutes les 30 s et le supprime à la fermeture. Un verrou de moins de
+2 minutes tenu par un autre appareil affiche _Atlas OS est déjà ouvert sur <appareil>_, avec _lecture
+seule_ (une copie privée est ouverte, toute écriture est refusée), _forcer_ ou _quitter_. Un verrou plus
+ancien est considéré comme abandonné. Si un autre appareil prend le verrou pendant que celui-ci est
+ouvert, il propose de recharger. Les préférences sont recopiées dans `preferences.json` dans le dossier de
+données, donc un deuxième PC a la même apparence.
+
+**Limites connues.** La synchro cloud n'a pas été testée avec un vrai service (seulement des dossiers ordinaires). Le journal d'activité et les préférences ne sont pas fusionnés en mode Fusionner. Après un arrêt brutal le verrou reste actif jusqu'à 2 minutes. Tout reste 100 % local : aucun compte, aucun serveur.
+
 ## Autres plateformes
 
 `electron-builder.yml` contient des blocs `mac` et `linux` commentés, et le code de la coquille
