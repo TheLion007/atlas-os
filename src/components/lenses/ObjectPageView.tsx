@@ -7,6 +7,7 @@ import { DataSourceError } from "@/client/data-source";
 import { resolveMemoryContext } from "@/domain/context-color";
 import { memoryProvenance } from "@/domain/memory";
 import { deriveFacts } from "@/domain/object-facts";
+import { parentProjectOf } from "@/domain/project-view";
 import { useI18n } from "@/i18n/I18nProvider";
 import { usePeek } from "@/lib/url-state";
 import { Breadcrumb } from "../shell/Breadcrumb";
@@ -37,13 +38,31 @@ export function ObjectPageView({ id }: { id: string }) {
   );
 
   const type = object.data?.type;
-  const collection = type ? ALL_NAV.find((n) => n.collection === type) : undefined;
+  // A sub-project is shown under its project: Projects / <project> / <sub-project>.
+  const parentProject = useMemo(
+    () =>
+      graph.data && type === "sub_project"
+        ? parentProjectOf(id, graph.data.nodes, graph.data.edges)
+        : null,
+    [graph.data, type, id],
+  );
+  const collection = ALL_NAV.find(
+    (n) => n.collection === (type === "sub_project" ? "project" : type),
+  );
   const back = (
     <Breadcrumb
       crumbs={[
         { label: t("nav.overview"), href: hrefKeepingState("/", params) },
         ...(collection
           ? [{ label: t(collection.label), href: hrefKeepingState(collection.href, params) }]
+          : []),
+        ...(parentProject
+          ? [
+              {
+                label: parentProject.title,
+                href: hrefKeepingState(`/objects/${parentProject.id}`, params),
+              },
+            ]
           : []),
         { label: object.data?.title ?? t("nav.object") },
       ]}
@@ -71,7 +90,7 @@ export function ObjectPageView({ id }: { id: string }) {
     );
   }
 
-  if (object.data.type === "project" && graph.data) {
+  if ((object.data.type === "project" || object.data.type === "sub_project") && graph.data) {
     return (
       <div>
         {back}
