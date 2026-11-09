@@ -8,6 +8,7 @@ import { buildFixtureData } from "@/seed/fixtures";
 import { neutralSeed } from "@/seed/neutral-fr";
 import { seedId } from "@/seed/seed-types";
 import { useTimer } from "@/lib/timer-store";
+import { useUi } from "../shell/ui-store";
 import { ObjectPageView } from "./ObjectPageView";
 
 const push = vi.fn();
@@ -111,5 +112,16 @@ describe("a sub-project opens the same page as a project", () => {
     const titles = lines.map((l) => l.textContent ?? "");
     expect(titles.some((x) => x.includes("Audit de contraste (AA)"))).toBe(true);
     expect(new Set(titles).size).toBe(titles.length);
+  });
+
+  it("adding a task from a sub-project's board creates it inside that sub-project", async () => {
+    mount("s_web_a");
+    await screen.findByRole("heading", { name: "Pages produit", level: 1 });
+    const todo = screen.getByRole("region", { name: "To do" });
+    fireEvent.click(within(todo).getByRole("button", { name: /Add|New/i }));
+    expect(useUi.getState().create).toMatchObject({
+      type: "task",
+      parent: { id: seedId("s_web_a"), type: "sub_project", title: "Pages produit" },
+    });
   });
 });
