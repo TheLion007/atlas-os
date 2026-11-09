@@ -29,6 +29,12 @@ const net = require("node:net");
 const path = require("node:path");
 const { buildMenu } = require("./menu.cjs");
 const { setupAutoUpdate, isUpdateRequest } = require("./updater.cjs");
+const os = require("node:os");
+const location = require("./data-location.cjs");
+const { createDeviceLock, HEARTBEAT_MS } = require("./device-lock.cjs");
+const { applyPendingImport } = require("./pending-import.cjs");
+const autoBackup = require("./auto-backup.cjs");
+const prefsSync = require("./prefs-sync.cjs");
 
 const PRODUCT = "Atlas OS";
 const REPO_URL = "https://github.com/TheLion007/atlas-os";
@@ -45,8 +51,46 @@ const smokeFile = smokeArg ? smokeArg.slice("--smoke-test=".length) : null;
 app.setName(PRODUCT);
 const userData = process.env.ATLAS_USER_DATA_DIR || path.join(app.getPath("appData"), PRODUCT);
 app.setPath("userData", userData);
-const dataDir = path.join(userData, "data", "atlas-pgdata");
 const logDir = path.join(userData, "logs");
+
+// Where the data lives is the person's choice (location.json, kept on this device): the default
+// is the user's AppData folder, but it can be any folder, a cloud-synced one included.
+let roots = location.resolveRoots(userData, location.readConfig(userData));
+let dataRoot = roots.dataRoot;
+let dataDir = roots.dbDir;
+/** The database the server actually opens: dataDir, or a private copy in read-only mode. */
+let serverDbDir = dataDir;
+let readOnly = false;
+let deviceLock = null;
+let heartbeat = null;
+let importNotice = null;
+const deviceName = process.env.ATLAS_DEVICE_NAME || os.hostname();
+const lockToken = crypto.randomBytes(12).toString("hex");
+
+/**
+ * Questions put to the person in native dialogs (before or beside the window). Tests answer them
+ * with ATLAS_TEST_ANSWERS="id=answer;id=answer", and give the file pickers' results the same way.
+ */
+const testAnswers = Object.fromEntries(
+  (process.env.ATLAS_TEST_ANSWERS || "")
+    .split(";")
+    .filter(Boolean)
+    .map((kv) => kv.split("=")),
+);
+async function choose(id, { type = "question", message, detail, options }) {
+  if (testAnswers[id]) return testAnswers[id];
+  const { response } = await dialog.showMessageBox(win && !win.isDestroyed() ? win : undefined, {
+    type,
+    title: PRODUCT,
+    message,
+    detail,
+    buttons: options.map((o) => o.label),
+    defaultId: 0,
+    cancelId: options.length - 1,
+    noLink: true,
+  });
+  return options[response].id;
+}
 
 let win = null;
 let server = null;
@@ -110,7 +154,7 @@ async function startServer() {
   const root = path.join(process.resourcesPath, "server");
   const entry = path.join(root, "server.js");
   if (!fs.existsSync(entry)) throw new Error(`The Atlas OS server is missing (${entry}).`);
-  fs.mkdirSync(path.dirname(dataDir), { recursive: true });
+  fs.mkdirSync(path.dirname(serverDbDir), { recursive: true });
   const port = await freePort();
   token = crypto.randomBytes(24).toString("hex");
   origin = `http://127.0.0.1:${port}`;
@@ -123,7 +167,13 @@ async function startServer() {
       NODE_ENV: "production",
       PORT: String(port),
       HOSTNAME: "127.0.0.1",
-      ATLAS_DB_DIR: dataDir,
+      ATLAS_DB_DIR: serverDbDir,
+      ATLAS_DATA_ROOT: dataRoot,
+      // the process lock stays on this PC: a process id means nothing on another machine
+      ATLAS_DB_LOCK: path.join(userData, "atlas-pgdata.lock"),
+      ATLAS_DEVICE_NAME: deviceName,
+      ATLAS_APP_VERSION: app.getVersion(),
+      ATLAS_READONLY: readOnly ? "1" : "",
       ATLAS_MIGRATIONS_DIR: path.join(process.resourcesPath, "db", "migrations"),
       ATLAS_DESKTOP_TOKEN: token,
       NEXT_PUBLIC_ATLAS_FIXTURES: "",
@@ -297,7 +347,250 @@ async function runSmokeTest(window) {
 }
 
 function aboutText() {
-  return `${PRODUCT} ${app.getVersion()}\n\nTes données sont enregistrées ici, uniquement sur ce PC :\n${userData}`;
+  return `${PRODUCT} ${app.getVersion()}\n\nTes données sont enregistrées ici, uniquement sur ce PC (ou dans le dossier que tu as choisi) :\n${dataRoot}`;
+}
+
+/** The data folder must be reachable and writable before anything is opened. */
+async function ensureDataRoot() {
+  for (;;) {
+    const ok = location.checkWritable(dataRoot);
+    if (ok.ok) return;
+    log(`data folder not usable: ${dataRoot} (${ok.reason})`);
+    const answer = await choose("unreachable", {
+      type: "warning",
+      message: "Le dossier de données est inaccessible.",
+      detail: `Atlas OS ne peut pas écrire dans :\n${dataRoot}\n\nVérifie que le disque ou le service de synchronisation est bien disponible, puis réessaie. Tes données ne sont pas touchées.`,
+      options: [
+        { id: "retry", label: "Réessayer" },
+        { id: "choose", label: "Choisir un autre dossier…" },
+        { id: "quit", label: "Quitter" },
+      ],
+    });
+    if (answer === "quit") throw Object.assign(new Error("quit"), { silent: true });
+    if (answer === "choose") {
+      const picked = await pickFolder("Choisir le dossier des données");
+      if (picked) {
+        const r = location.applyLocation(userData, { target: picked, mode: "use" });
+        if (r.ok) {
+          roots = location.resolveRoots(userData, location.readConfig(userData));
+          dataRoot = roots.dataRoot;
+          dataDir = roots.dbDir;
+          serverDbDir = dataDir;
+        }
+      }
+    }
+  }
+}
+
+/** Finishes a pending import, takes (or yields) the device lock, and settles read-only mode. */
+async function prepareData() {
+  await ensureDataRoot();
+  deviceLock = createDeviceLock({ root: dataRoot, device: deviceName, token: lockToken });
+  const found = deviceLock.inspect();
+  if (found.state === "held") {
+    const answer = await choose("lock", {
+      type: "warning",
+      message: `Atlas OS est déjà ouvert sur ${found.holder.device}.`,
+      detail:
+        "Ouvrir les mêmes données depuis deux PC en même temps peut les abîmer.\n\n• Lecture seule : tu peux regarder tes données, sans rien modifier.\n• Forcer l’ouverture : à faire seulement si Atlas OS n’est en fait plus ouvert là-bas.",
+      options: [
+        { id: "readonly", label: "Ouvrir en lecture seule" },
+        { id: "force", label: "Forcer l’ouverture" },
+        { id: "quit", label: "Quitter" },
+      ],
+    });
+    if (answer === "quit") throw Object.assign(new Error("quit"), { silent: true });
+    readOnly = answer === "readonly";
+  }
+  if (!readOnly) {
+    deviceLock.acquire();
+    log(`device lock taken on ${dataRoot} (${deviceName})`);
+  } else {
+    // a private copy to read from: the shared folder is not opened by two PCs at once
+    const copy = path.join(userData, "readonly-db", "atlas-pgdata");
+    fs.rmSync(path.dirname(copy), { recursive: true, force: true });
+    if (fs.existsSync(dataDir)) fs.cpSync(dataDir, copy, { recursive: true });
+    serverDbDir = copy;
+    log(`read-only: working on a copy of ${dataDir}`);
+  }
+}
+
+/** Starts the server; when a replacement import was waiting, swaps it in and keeps the old data until it runs. */
+async function startServerWithImport() {
+  const swap = readOnly
+    ? null
+    : applyPendingImport(dataRoot, dataDir, (prefs) => prefsSync.writeImported(dataRoot, prefs));
+  if (swap && !swap.ok) {
+    importNotice = { ok: false, reason: swap.reason };
+    log(`pending import not applied: ${swap.reason}`);
+  }
+  try {
+    await startServer();
+    if (swap && swap.ok) {
+      swap.commit();
+      importNotice = { ok: true, safetyBackup: swap.safetyBackup };
+      log("import applied");
+    }
+  } catch (e) {
+    if (!(swap && swap.ok)) throw e;
+    log(`the imported data did not start (${e && e.message}); putting the previous data back`);
+    try {
+      if (server) server.kill();
+    } catch {
+      /* gone */
+    }
+    server = null;
+    swap.rollback();
+    importNotice = { ok: false, reason: "did_not_start", safetyBackup: swap.safetyBackup };
+    await startServer();
+  }
+}
+
+async function pickFolder(title) {
+  if (testAnswers.folder) return testAnswers.folder;
+  const r = await dialog.showOpenDialog(win && !win.isDestroyed() ? win : undefined, {
+    title,
+    properties: ["openDirectory", "createDirectory"],
+  });
+  return r.canceled ? null : r.filePaths[0];
+}
+
+async function api(pathname, init = {}) {
+  const res = await fetch(`${origin}${pathname}`, {
+    ...init,
+    headers: { "content-type": "application/json", [TOKEN_HEADER]: token, ...(init.headers || {}) },
+  });
+  return res.json();
+}
+
+const COLLECT_PREFS =
+  "JSON.stringify(Object.fromEntries(Object.keys(localStorage).filter((k) => k.startsWith('atlas') && !k.startsWith('atlas.sync')).map((k) => [k, localStorage.getItem(k)])))";
+
+async function currentPrefs() {
+  try {
+    if (win && !win.isDestroyed())
+      return JSON.parse(await win.webContents.executeJavaScript(COLLECT_PREFS));
+  } catch {
+    /* no window yet */
+  }
+  return prefsSync.readSnapshot(dataRoot)?.keys ?? {};
+}
+
+/** Closes the database cleanly (so nothing is half-written), then stops the server. */
+async function stopServerGracefully() {
+  if (!server || !origin || !token) return;
+  try {
+    await Promise.race([
+      api("/api/backup/shutdown", { method: "POST", body: "{}" }),
+      new Promise((r) => setTimeout(r, 4000)),
+    ]);
+  } catch {
+    /* it will be stopped anyway */
+  }
+  try {
+    quitting = true;
+    server.kill();
+  } catch {
+    /* gone */
+  }
+}
+
+async function relaunch() {
+  await stopServerGracefully();
+  if (deviceLock) deviceLock.release();
+  app.relaunch();
+  quitting = true;
+  app.exit(0);
+}
+
+let autoBusy = false;
+/** The daily automatic backup: when it is due and the folder is reachable. */
+async function runAutoBackup({ force = false } = {}) {
+  const cfg = location.readConfig(userData);
+  const ab = cfg.autoBackup;
+  if (autoBusy || readOnly || !ab.enabled || !ab.folder || !origin)
+    return { ok: false, code: "off" };
+  const now = new Date();
+  if (!force && !autoBackup.isDue(ab.folder, now)) return { ok: true, skipped: true };
+  const writable = location.checkWritable(ab.folder);
+  if (!writable.ok) {
+    location.writeConfig(userData, {
+      ...cfg,
+      autoBackup: { ...ab, lastError: "folder_unreachable" },
+    });
+    return { ok: false, code: "folder_unreachable" };
+  }
+  autoBusy = true;
+  try {
+    const out = autoBackup.autoBackupPath(ab.folder, now);
+    const started = await api("/api/backup/export", {
+      method: "POST",
+      body: JSON.stringify({ path: out, prefs: await currentPrefs(), kind: "auto" }),
+    });
+    if (started.error) throw new Error(started.error.message);
+    for (let i = 0; i < 600; i++) {
+      await new Promise((r) => setTimeout(r, 500));
+      const { job } = await api("/api/backup/status");
+      if (job && job.status === "done") break;
+      if (job && job.status === "error") throw new Error(job.error?.message || "export failed");
+    }
+    const removed = autoBackup.rotate(ab.folder, autoBackup.KEEP);
+    log(`automatic backup written: ${out} (removed ${removed.length} old)`);
+    const fresh = location.readConfig(userData);
+    location.writeConfig(userData, {
+      ...fresh,
+      autoBackup: {
+        ...fresh.autoBackup,
+        lastDay: autoBackup.dayOf(now),
+        lastPath: out,
+        lastError: null,
+      },
+    });
+    return { ok: true, path: out };
+  } catch (e) {
+    log(`automatic backup failed: ${e && e.message}`);
+    const fresh = location.readConfig(userData);
+    location.writeConfig(userData, {
+      ...fresh,
+      autoBackup: { ...fresh.autoBackup, lastError: "failed" },
+    });
+    return { ok: false, code: "failed" };
+  } finally {
+    autoBusy = false;
+  }
+}
+
+/** The things that run while the app is open: the lock's heartbeat, and the daily backup. */
+function startDataWatchers() {
+  if (!readOnly && deviceLock) {
+    let asked = false;
+    heartbeat = setInterval(
+      async () => {
+        const r = deviceLock.refresh();
+        if (r.state === "taken" && !asked) {
+          asked = true;
+          const answer = await choose("external", {
+            type: "warning",
+            message: `Les données ont été ouvertes depuis ${r.holder.device}.`,
+            detail:
+              "Un autre appareil a pris la main sur ce dossier pendant qu’Atlas OS était ouvert ici : les fichiers ont pu changer. Recharger affiche les données à jour.",
+            options: [
+              { id: "reload", label: "Recharger" },
+              { id: "ignore", label: "Ignorer" },
+            ],
+          });
+          if (answer === "reload") await relaunch();
+          else {
+            deviceLock.acquire();
+            asked = false;
+          }
+        }
+      },
+      process.env.ATLAS_HEARTBEAT_MS ? Number(process.env.ATLAS_HEARTBEAT_MS) : HEARTBEAT_MS,
+    );
+  }
+  setTimeout(() => void runAutoBackup(), 20_000).unref();
+  setInterval(() => void runAutoBackup(), 30 * 60 * 1000).unref();
 }
 
 async function boot() {
@@ -324,12 +617,14 @@ async function boot() {
     origin = new URL(devUrl).origin;
     token = null;
   } else {
-    await startServer();
+    await prepareData();
+    await startServerWithImport();
     url = origin;
   }
   lockDownSession();
   const window = createWindow(url);
   setupAutoUpdate({ app, getWindow: () => win, ipcMain, userData, log });
+  startDataWatchers();
   if (smokeFile) void runSmokeTest(window);
 }
 
@@ -341,7 +636,105 @@ ipcMain.handle("atlas:info", () => ({
   databaseDir: dataDir,
   packaged,
 }));
-ipcMain.handle("atlas:open-data-folder", () => shell.openPath(userData));
+ipcMain.handle("atlas:open-data-folder", () => shell.openPath(dataRoot));
+
+// ----- "Mes données": where the data lives, backups, the lock ----------------------------------
+const dataInfo = () => {
+  const cfg = location.readConfig(userData);
+  return {
+    dataRoot,
+    dbDir: dataDir,
+    defaultRoot: userData,
+    isCustom: roots.isCustom,
+    readOnly,
+    device: deviceName,
+    autoBackup: cfg.autoBackup,
+    importNotice,
+  };
+};
+ipcMain.handle("atlas:data-info", () => dataInfo());
+ipcMain.handle("atlas:data-import-notice", () => {
+  const n = importNotice;
+  importNotice = null;
+  return n;
+});
+
+const stampName = () => {
+  const d = new Date();
+  const p = (n) => String(n).padStart(2, "0");
+  return `AtlasOS-sauvegarde-${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}.atlasbackup`;
+};
+ipcMain.handle("atlas:data-choose-save", async () => {
+  if (testAnswers.save) return testAnswers.save;
+  const r = await dialog.showSaveDialog(win && !win.isDestroyed() ? win : undefined, {
+    title: "Exporter mes données",
+    defaultPath: path.join(app.getPath("documents"), stampName()),
+    filters: [{ name: "Sauvegarde Atlas OS", extensions: ["atlasbackup"] }],
+  });
+  return r.canceled ? null : r.filePath;
+});
+ipcMain.handle("atlas:data-choose-open", async () => {
+  if (testAnswers.open) return testAnswers.open;
+  const r = await dialog.showOpenDialog(win && !win.isDestroyed() ? win : undefined, {
+    title: "Importer des données",
+    properties: ["openFile"],
+    filters: [{ name: "Sauvegarde Atlas OS", extensions: ["atlasbackup"] }],
+  });
+  return r.canceled ? null : r.filePaths[0];
+});
+ipcMain.handle("atlas:data-choose-folder", (_e, title) =>
+  pickFolder(String(title || "Choisir un dossier")),
+);
+
+/** What a folder would mean as the data folder, before anything is changed. */
+ipcMain.handle("atlas:data-preview-location", (_e, target) => {
+  const valid = location.validateTarget(String(target || ""), dataRoot);
+  if (!valid.ok) return { ok: false, code: valid.reason };
+  const writable = location.checkWritable(target);
+  if (!writable.ok) return { ok: false, code: "not_writable" };
+  const t = location.inspectTarget(target);
+  return { ok: true, hasData: t.hasData, empty: t.empty };
+});
+ipcMain.handle("atlas:data-apply-location", async (_e, { target, mode }) => {
+  if (readOnly) return { ok: false, code: "read_only" };
+  await stopServerGracefully(); // the database must be closed before it is copied
+  const r = location.applyLocation(userData, { target: String(target), mode });
+  if (!r.ok) {
+    // nothing changed: bring the app back up on the same data
+    await relaunch();
+    return r;
+  }
+  setTimeout(() => void relaunch(), 400);
+  return r;
+});
+ipcMain.handle("atlas:data-restart", () => {
+  setTimeout(() => void relaunch(), 300);
+  return true;
+});
+ipcMain.handle("atlas:data-save-prefs", (_e, keys) => {
+  if (readOnly || !keys || typeof keys !== "object") return null;
+  const clean = {};
+  for (const [k, v] of Object.entries(keys))
+    if (typeof v === "string" && k.startsWith("atlas")) clean[k] = v;
+  return prefsSync.saveSnapshot(dataRoot, clean);
+});
+ipcMain.on("atlas:prefs-boot", (e) => {
+  // read by the preload before the page runs: what to apply to localStorage
+  e.returnValue = readOnly ? null : prefsSync.readSnapshot(dataRoot);
+});
+ipcMain.handle("atlas:data-set-auto-backup", async (_e, { enabled, folder }) => {
+  const cfg = location.readConfig(userData);
+  const next = { ...cfg.autoBackup, enabled: !!enabled, folder: folder || cfg.autoBackup.folder };
+  if (next.enabled && !next.folder) return { ok: false, code: "no_folder" };
+  if (next.folder) {
+    const w = location.checkWritable(next.folder);
+    if (!w.ok) return { ok: false, code: "not_writable" };
+  }
+  location.writeConfig(userData, { ...cfg, autoBackup: { ...next, lastError: null } });
+  if (next.enabled) void runAutoBackup();
+  return { ok: true, info: dataInfo() };
+});
+ipcMain.handle("atlas:data-run-auto-backup", () => runAutoBackup({ force: true }));
 
 // ----- life cycle -------------------------------------------------------------------------------
 if (!app.requestSingleInstanceLock()) {
@@ -357,6 +750,12 @@ if (!app.requestSingleInstanceLock()) {
     .whenReady()
     .then(boot)
     .catch((e) => {
+      if (e && e.silent) {
+        // the person chose to quit from a start-up question
+        quitting = true;
+        app.quit();
+        return;
+      }
       log(`startup failed: ${e && e.stack ? e.stack : e}`);
       dialog.showErrorBox(
         PRODUCT,
@@ -368,6 +767,8 @@ if (!app.requestSingleInstanceLock()) {
   app.on("window-all-closed", () => app.quit());
   app.on("before-quit", () => {
     quitting = true;
+    if (heartbeat) clearInterval(heartbeat);
+    if (deviceLock) deviceLock.release();
     if (server) {
       try {
         server.kill();
