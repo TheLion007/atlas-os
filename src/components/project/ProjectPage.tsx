@@ -9,7 +9,14 @@ import { enrich, projectColor } from "@/design/palette";
 import type { ApiEdge, ApiObject } from "@/domain/api-types";
 import { riskLevel } from "@/domain/engine";
 import { yearGrid } from "@/domain/history";
-import { descendantsOf, projectBoard, projectCards, type BoardColumn } from "@/domain/project-view";
+import {
+  containerCard,
+  descendantsOf,
+  parentProjectOf,
+  projectBoard,
+  projectCards,
+  type BoardColumn,
+} from "@/domain/project-view";
 import { useI18n } from "@/i18n/I18nProvider";
 import { cn } from "@/lib/cn";
 import { playSound } from "@/lib/feedback/sound";
@@ -44,6 +51,9 @@ interface ProjectPageProps {
  * A project as the design draws it: the switcher between projects, the header card (domain, name,
  * description, badges, progress ring), its sub-projects, then six tabs — Overview, Tasks (the
  * board), Notes, Vault, Timeline, Budget and risks. Everything is read from the real graph.
+ *
+ * A sub-project is the same page, with the same parts and the same figures; it only says
+ * "Sub-project" in the header and leads back to the project it belongs to.
  */
 export function ProjectPage({ project, nodes, edges, actions }: ProjectPageProps) {
   const { t, f, locale } = useI18n();
@@ -56,9 +66,23 @@ export function ProjectPage({ project, nodes, edges, actions }: ProjectPageProps
   const { setStatus } = useTaskStatus();
   const journal = useProgress(140);
 
+  const isSub = project.type === "sub_project";
   const cards = useMemo(() => projectCards(nodes, edges, today), [nodes, edges, today]);
-  const mine = cards.find((c) => c.id === project.id) ?? null;
-  const color = enrich(projectColor(project.color, project.id), 1.2);
+  const mine = useMemo(
+    () => containerCard(project.id, nodes, edges, today),
+    [project.id, nodes, edges, today],
+  );
+  const parent = useMemo(
+    () => (isSub ? parentProjectOf(project.id, nodes, edges) : null),
+    [isSub, project.id, nodes, edges],
+  );
+  // A sub-project wears its project's colour and domain unless it has its own.
+  const color = enrich(
+    parent && !project.color
+      ? projectColor(parent.color, parent.id)
+      : projectColor(project.color, project.id),
+    1.2,
+  );
   const byId = useMemo(() => new Map(nodes.map((n) => [n.id, n])), [nodes]);
   const inside = useMemo(() => descendantsOf(project.id, edges), [project.id, edges]);
   const board = useMemo(
@@ -108,13 +132,21 @@ export function ProjectPage({ project, nodes, edges, actions }: ProjectPageProps
   const currency = str(project.details?.budgetCurrency) || null;
   const total = (mine?.tasksOpen ?? 0) + (mine?.tasksDone ?? 0);
   const pct = mine?.progress == null ? 0 : Math.round(mine.progress * 100);
-  const kind = str(project.details?.kind);
+  const kind = str(project.details?.kind) || str(parent?.details?.kind);
   const prio = num(project.details?.priority) ?? 2;
   const description = str(project.details?.description);
-  const grid = useMemo(
-    () => yearGrid(journal.data ?? [], today, 18, project.id),
-    [journal.data, today, project.id],
-  );
+  const grid = useMemo(() => {
+    const entries = journal.data ?? [];
+    // The journal files each advance under its top-level project: a sub-project's own activity
+    // is what happened to the objects inside it.
+    if (!isSub) return yearGrid(entries, today, 18, project.id);
+    const scope = new Set([project.id, ...inside]);
+    return yearGrid(
+      entries.filter((e) => e.objectId !== null && scope.has(e.objectId)),
+      today,
+      18,
+    );
+  }, [journal.data, today, project.id, isSub, inside]);
   const cellText = (c: { count: number; day: string }) =>
     c.count === 0
       ? t("hist.cell0", { day: f.date(c.day) })
@@ -160,12 +192,12 @@ export function ProjectPage({ project, nodes, edges, actions }: ProjectPageProps
         className="flex flex-wrap gap-1 self-start rounded-[14px] bg-heat-0 p-1"
       >
         {cards.map((q) => {
-          const here = q.id === project.id;
+          const here = q.id === (parent?.id ?? project.id);
           return (
             <Link
               key={q.id}
               href={hrefKeepingState(`/projects?p=${q.id}`, params)}
-              aria-current={here ? "page" : undefined}
+              aria-current={q.id === project.id ? "page" : undefined}
               className={cn(
                 "flex items-center gap-[7px] rounded-[10px] border px-[11px] py-[6px] text-[12.5px] font-semibold transition-all duration-[250ms] hover:text-fg",
                 here
@@ -192,8 +224,17 @@ export function ProjectPage({ project, nodes, edges, actions }: ProjectPageProps
         <div className="relative flex min-w-[320px] flex-1 flex-col gap-[10px]">
           <span className="num flex items-center gap-2 text-[11px] font-semibold tracking-[0.08em] text-fg-subtle uppercase">
             <i className="size-[10px] rounded-[3px]" style={{ background: color }} />
-            {t("proj.cards")} / {kind && kind !== "general" ? kind : t("map2.misc")}
+            {isSub ? t("pp.subLabel") : t("proj.cards")} /{" "}
+            {kind && kind !== "general" ? kind : t("map2.misc")}
           </span>
+          {parent && (
+            <Link
+              href={href(parent.id)}
+              className="-mt-1 w-fit text-[12.5px] font-semibold text-fg-muted hover:text-fg hover:underline"
+            >
+              ← {t("pp.backToParent", { title: parent.title })}
+            </Link>
+          )}
           <h1 className="font-display text-[40px] leading-[1.02] font-extrabold tracking-[-0.03em]">
             {project.title}
           </h1>
@@ -272,7 +313,8 @@ export function ProjectPage({ project, nodes, edges, actions }: ProjectPageProps
             type="button"
             onClick={() => {
               playSound("click");
-              useTimer.getState().setProject(project.id, null);
+              // The timer counts per project: a sub-project's focus time goes to its project.
+              useTimer.getState().setProject(parent?.id ?? project.id, null);
               router.push(href("/timer"));
             }}
             className="inline-flex h-9 items-center gap-2 rounded-[11px] bg-fg px-4 text-[13px] font-semibold text-bg transition-transform duration-300 ease-(--ease-spring) hover:-translate-y-px active:scale-[0.95]"
@@ -374,7 +416,7 @@ export function ProjectPage({ project, nodes, edges, actions }: ProjectPageProps
             onAdd={() =>
               openCreate({
                 type: "task",
-                parent: { id: project.id, type: "project", title: project.title },
+                parent: { id: project.id, type: project.type, title: project.title },
               })
             }
           />
@@ -461,7 +503,7 @@ export function ProjectPage({ project, nodes, edges, actions }: ProjectPageProps
 
               <section className={cn(card, "gap-[14px]")}>
                 <div className="flex items-baseline justify-between">
-                  <h3 className={cardTitle}>{t("pp.activity")}</h3>
+                  <h3 className={cardTitle}>{t(isSub ? "pp.activitySub" : "pp.activity")}</h3>
                   <span className="text-xs text-fg-subtle">{t("pp.weeks", { count: 18 })}</span>
                 </div>
                 <HeatGrid

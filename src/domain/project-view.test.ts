@@ -3,7 +3,9 @@ import { buildFixtureData } from "@/seed/fixtures";
 import { seedId } from "@/seed/seed-types";
 import { neutralSeed } from "@/seed/neutral-fr";
 import {
+  containerCard,
   descendantsOf,
+  parentProjectOf,
   projectBoard,
   projectCards,
   recentDays,
@@ -86,5 +88,38 @@ describe("recent days and streaks", () => {
     expect(streak(log, today)).toBe(2);
     expect(streak(log.slice(2), today)).toBe(1); // nothing yet today: yesterday still counts
     expect(streak([entry("2026-10-20")], today)).toBe(0);
+  });
+});
+
+describe("a sub-project has the same figures as a project", () => {
+  const pages = seedId("s_web_a");
+
+  it("has a card with its own progress and task counts, from its tasks", () => {
+    const card = containerCard(pages, d.nodes, d.edges, d.today);
+    expect(card?.title).toBe("Pages produit");
+    // 4 tasks (efforts 2, 1, 1, 1): one done, three still open
+    expect(card?.tasksDone).toBe(1);
+    expect(card?.tasksOpen).toBe(3);
+    expect(card?.progress).toBeCloseTo(1 / 5);
+  });
+
+  it("is the same figure the project shows for that sub-project", () => {
+    const web = projectCards(d.nodes, d.edges, d.today).find((c) => c.id === seedId("p_web"));
+    const inList = web?.subProjects.find((s) => s.id === pages);
+    expect(inList?.progress).toBe(containerCard(pages, d.nodes, d.edges, d.today)?.progress);
+  });
+
+  it("the project counts each task once, whichever way it is reached", () => {
+    const web = containerCard(seedId("p_web"), d.nodes, d.edges, d.today);
+    const own = [...descendantsOf(seedId("p_web"), d.edges)]
+      .map((id) => d.nodes.find((n) => n.id === id))
+      .filter((n) => n?.type === "task" && n.status !== "dropped");
+    expect((web?.tasksOpen ?? 0) + (web?.tasksDone ?? 0)).toBe(own.length);
+  });
+
+  it("knows its project, and has no card for other kinds of object", () => {
+    expect(parentProjectOf(pages, d.nodes, d.edges)?.id).toBe(seedId("p_web"));
+    expect(parentProjectOf(seedId("p_web"), d.nodes, d.edges)).toBeNull();
+    expect(containerCard(seedId("t_web1"), d.nodes, d.edges, d.today)).toBeNull();
   });
 });

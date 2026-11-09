@@ -52,13 +52,43 @@ export interface ProjectCard {
   subProjects: { id: string; title: string; progress: number | null }[];
 }
 
-/** One card per live top-level project, most urgent first. */
-export function projectCards(
+/** The card of one project or sub-project: the same figures for both, read from the same graph. */
+function buildCard(
+  p: ApiObject,
   nodes: readonly ApiObject[],
   edges: readonly ApiEdge[],
   today: string,
-): ProjectCard[] {
-  const progress = rollUpProgress(
+  progress: ReturnType<typeof rollUpProgress>,
+  byId: Map<string, ApiObject>,
+): ProjectCard {
+  const inside = [...descendantsOf(p.id, edges)]
+    .map((id) => byId.get(id))
+    .filter((n): n is ApiObject => !!n && isLive(n));
+  const tasks = inside.filter((n) => n.type === "task");
+  const target = str(p.details, "targetDate");
+  return {
+    id: p.id,
+    title: p.title,
+    color: p.color,
+    status: p.status,
+    description: str(p.details, "description") ?? "",
+    progress: progress.get(p.id)?.progress ?? null,
+    targetDate: target,
+    daysLeft: target ? diffDays(today, target) : null,
+    tasksOpen: tasks.filter((t) => t.status !== "done").length,
+    tasksDone: tasks.filter((t) => t.status === "done").length,
+    tasksLate: tasks.filter((t) => t.status !== "done" && (str(t.details, "due") ?? "9") < today)
+      .length,
+    subProjects: edges
+      .filter((e) => e.kind === "contains" && e.from === p.id)
+      .map((e) => byId.get(e.to))
+      .filter((n): n is ApiObject => !!n && n.type === "sub_project" && isLive(n))
+      .map((s) => ({ id: s.id, title: s.title, progress: progress.get(s.id)?.progress ?? null })),
+  };
+}
+
+const progressOf = (nodes: readonly ApiObject[], edges: readonly ApiEdge[]) =>
+  rollUpProgress(
     nodes.map((n) => ({
       id: n.id,
       type: n.type,
@@ -67,36 +97,52 @@ export function projectCards(
     })),
     edges,
   );
+
+/** One card per live top-level project, most urgent first. */
+export function projectCards(
+  nodes: readonly ApiObject[],
+  edges: readonly ApiEdge[],
+  today: string,
+): ProjectCard[] {
+  const progress = progressOf(nodes, edges);
   const byId = new Map(nodes.map((n) => [n.id, n]));
   const cards: ProjectCard[] = [];
   for (const p of nodes) {
     if (p.type !== "project" || !isLive(p) || p.status === "done") continue;
-    const inside = [...descendantsOf(p.id, edges)]
-      .map((id) => byId.get(id))
-      .filter((n): n is ApiObject => !!n && isLive(n));
-    const tasks = inside.filter((n) => n.type === "task");
-    const target = str(p.details, "targetDate");
-    cards.push({
-      id: p.id,
-      title: p.title,
-      color: p.color,
-      status: p.status,
-      description: str(p.details, "description") ?? "",
-      progress: progress.get(p.id)?.progress ?? null,
-      targetDate: target,
-      daysLeft: target ? diffDays(today, target) : null,
-      tasksOpen: tasks.filter((t) => t.status !== "done").length,
-      tasksDone: tasks.filter((t) => t.status === "done").length,
-      tasksLate: tasks.filter((t) => t.status !== "done" && (str(t.details, "due") ?? "9") < today)
-        .length,
-      subProjects: edges
-        .filter((e) => e.kind === "contains" && e.from === p.id)
-        .map((e) => byId.get(e.to))
-        .filter((n): n is ApiObject => !!n && n.type === "sub_project" && isLive(n))
-        .map((s) => ({ id: s.id, title: s.title, progress: progress.get(s.id)?.progress ?? null })),
-    });
+    cards.push(buildCard(p, nodes, edges, today, progress, byId));
   }
   return cards.sort((a, b) => (a.daysLeft ?? 9999) - (b.daysLeft ?? 9999));
+}
+
+/**
+ * The card of a project or a sub-project, whatever its place in the tree (a project that is
+ * finished still has its card here, unlike in the switcher row). `null` for any other object.
+ */
+export function containerCard(
+  id: string,
+  nodes: readonly ApiObject[],
+  edges: readonly ApiEdge[],
+  today: string,
+): ProjectCard | null {
+  const byId = new Map(nodes.map((n) => [n.id, n]));
+  const node = byId.get(id);
+  if (!node || (node.type !== "project" && node.type !== "sub_project")) return null;
+  return buildCard(node, nodes, edges, today, progressOf(nodes, edges), byId);
+}
+
+/** The project a sub-project belongs to (its live `contains` parent), or null. */
+export function parentProjectOf(
+  id: string,
+  nodes: readonly ApiObject[],
+  edges: readonly ApiEdge[],
+): ApiObject | null {
+  const byId = new Map(nodes.map((n) => [n.id, n]));
+  for (const e of edges) {
+    if (e.kind !== "contains" || e.to !== id) continue;
+    const parent = byId.get(e.from);
+    if (parent && parent.type === "project" && isLive(parent)) return parent;
+  }
+  return null;
 }
 
 export type BoardColumn = "draft" | "active" | "done";

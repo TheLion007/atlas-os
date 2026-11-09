@@ -35,6 +35,34 @@ describe("rollUpProgress", () => {
     expect(res.get("p")?.progress).toBe(0.5);
   });
 
+  it("computes a sub-project from its own tasks, like a project", () => {
+    const res = rollUpProgress(
+      [
+        { id: "p", type: "project", status: "active" },
+        { id: "s", type: "sub_project", status: "active" },
+        { id: "site", type: "task", status: "done" },
+        { id: "other", type: "task", status: "active" },
+      ],
+      [contains("p", "s"), contains("s", "site"), contains("s", "other")],
+    );
+    expect(res.get("s")).toEqual({ progress: 0.5, doneEffort: 1, totalEffort: 2 });
+  });
+
+  it("counts a task once in the project even when it sits in the project and in its sub-project", () => {
+    const res = rollUpProgress(
+      [
+        { id: "p", type: "project", status: "active" },
+        { id: "s", type: "sub_project", status: "active" },
+        { id: "shared", type: "task", status: "done" },
+        { id: "open", type: "task", status: "active" },
+      ],
+      [contains("p", "s"), contains("p", "shared"), contains("s", "shared"), contains("p", "open")],
+    );
+    expect(res.get("s")).toEqual({ progress: 1, doneEffort: 1, totalEffort: 1 });
+    // two tasks in the project (shared, open), not three
+    expect(res.get("p")).toEqual({ progress: 0.5, doneEffort: 1, totalEffort: 2 });
+  });
+
   it("reports no data, not 0%, when there is nothing to measure", () => {
     const res = rollUpProgress([{ id: "p", type: "project", status: "active" }], []);
     expect(res.get("p")?.progress).toBeNull();
