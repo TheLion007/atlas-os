@@ -43,7 +43,9 @@ function processAlive(pid: number): boolean {
  * file next to the data folder makes the second one fail loudly instead.
  */
 function acquireLock(dataDir: string): void {
-  const lockPath = `${dataDir}.lock`;
+  // On a data folder shared between PCs the process id means nothing on another machine, so the
+  // desktop app keeps this lock on the device (ATLAS_DB_LOCK); the cross-device lock is separate.
+  const lockPath = process.env.ATLAS_DB_LOCK || `${dataDir}.lock`;
   mkdirSync(dirname(lockPath), { recursive: true });
   if (existsSync(lockPath)) {
     const pid = Number(readFileSync(lockPath, "utf8").trim());
@@ -112,7 +114,7 @@ async function initFreshDatabase(pg: PGlite): Promise<void> {
     );
 }
 
-async function applyLateMigrations(pg: PGlite): Promise<void> {
+export async function applyLateMigrations(pg: PGlite): Promise<void> {
   const dir = migrationsDir();
   if (!existsSync(dir)) return;
   const pending = readdirSync(dir)
@@ -130,6 +132,58 @@ async function applyLateMigrations(pg: PGlite): Promise<void> {
   }
 }
 
+/** Brings a database (a fresh one, or one loaded from a backup of any age) up to this version. */
+export async function prepareDatabase(pg: PGlite): Promise<void> {
+  await pg.waitReady;
+  await pg.exec("set timezone to 'UTC'");
+  await initFreshDatabase(pg);
+  await applyLateMigrations(pg);
+}
+
+/** The newest migration this version of the app knows: the "schema level" of a backup. */
+export function latestSchemaVersion(): string {
+  const dir = migrationsDir();
+  const files = existsSync(dir)
+    ? readdirSync(dir)
+        .filter((f) => f.endsWith(".sql"))
+        .sort()
+    : [];
+  return files.length ? files[files.length - 1]!.slice(0, 14) : "0";
+}
+
+/**
+ * Opens a database from the files of a backup (`pgdata.tar.gz`), in memory or in `dir`, and
+ * migrates it to this version. Throws when the archive is not a database this engine can read.
+ */
+export async function openDatabaseFromDump(dump: Blob, dir?: string): Promise<PGlite> {
+  const pg = dir
+    ? new PGlite(dir, { loadDataDir: dump, extensions: { pg_trgm } })
+    : new PGlite({ loadDataDir: dump, extensions: { pg_trgm } });
+  try {
+    await prepareDatabase(pg);
+  } catch (e) {
+    await pg.close().catch(() => undefined);
+    throw e;
+  }
+  return pg;
+}
+
+/** The open local database, for the backup code (it needs the engine, not only `query`). */
+export async function livePglite(): Promise<PGlite> {
+  const globals = globalThis as unknown as { __atlasPglite?: Promise<PGlite> };
+  if (!globals.__atlasPglite) createPgliteDb();
+  return globals.__atlasPglite!;
+}
+
+/** Closes the open database cleanly (the desktop shell asks before stopping the server). */
+export async function closeLiveDatabase(): Promise<void> {
+  const globals = globalThis as unknown as { __atlasPglite?: Promise<PGlite> };
+  const open = globals.__atlasPglite;
+  if (!open) return;
+  const pg = await open;
+  await pg.close();
+}
+
 /** Where the database lives; `ATLAS_DB_DIR` overrides the default (relative to the project). */
 export function localDbDir(): string {
   return resolve(process.cwd(), process.env.ATLAS_DB_DIR || "data/atlas-pgdata");
@@ -144,10 +198,7 @@ export function createPgliteDb(dir: string = localDbDir()): Db {
   globals.__atlasPglite ??= (async () => {
     acquireLock(dir);
     const pg = new PGlite(dir, { extensions: { pg_trgm } });
-    await pg.waitReady;
-    await pg.exec("set timezone to 'UTC'");
-    await initFreshDatabase(pg);
-    await applyLateMigrations(pg);
+    await prepareDatabase(pg);
     return pg;
   })();
   const ready = globals.__atlasPglite;
