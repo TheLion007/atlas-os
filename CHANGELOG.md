@@ -3,7 +3,7 @@
 Versions are listed newest first. Each entry is in English, then in French.
 Les versions sont listées de la plus récente à la plus ancienne. Chaque entrée est en anglais, puis en français.
 
-## [Unreleased] — "My data" / « Mes données »
+## 1.1.0 — 2026-11-09 — "My data" / « Mes données »
 
 ### English
 
