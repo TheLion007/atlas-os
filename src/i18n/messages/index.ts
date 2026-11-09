@@ -17,6 +17,7 @@ import { shell } from "./shell";
 import { st } from "./st";
 import { tm } from "./tm";
 import { types } from "./types";
+import { md } from "./md";
 import { up } from "./up";
 import { vault } from "./vault";
 
@@ -56,6 +57,7 @@ export const en = {
   ...ai.en,
   ...up.en,
   ...rm.en,
+  ...md.en,
 };
 export const fr = {
   ...common.fr,
@@ -79,6 +81,7 @@ export const fr = {
   ...ai.fr,
   ...up.fr,
   ...rm.fr,
+  ...md.fr,
 };
 
 export type MessageKey = keyof typeof en;

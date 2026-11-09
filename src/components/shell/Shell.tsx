@@ -20,6 +20,7 @@ import { AiEngine } from "../ai/use-ollama";
 import { TimerEngine, useTimerToggle } from "../timer/use-timer";
 import { FeedbackLayer } from "./FeedbackLayer";
 import { Toaster } from "./Toaster";
+import { DataHost } from "./DataHost";
 import { DeleteBanner, DeleteHost } from "./DeleteHost";
 import { UpdateNotice } from "./UpdateNotice";
 import { TopBar } from "./TopBar";
@@ -246,6 +247,7 @@ export function Shell({ children }: { children: ReactNode }) {
         <UpdateNotice />
       </div>
       <DeleteHost />
+      <DataHost />
       <FeedbackLayer />
       <TimerEngine />
       <AiEngine />
