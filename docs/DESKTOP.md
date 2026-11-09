@@ -74,6 +74,41 @@ Releases). The release workflow (`.github/workflows/release.yml`) uploads, besid
 - Errors are words, not codes: no connection, no published version, interrupted download, incomplete
   file, or a failed check; the person's data is never at risk.
 
+## My data: backups, data folder, two PCs
+
+**Settings → My data** (desktop app) holds three things.
+
+- **Export / import.** _Export my data_ writes one `.atlasbackup` file (a renamed zip) with everything:
+  `manifest.json` (Atlas OS version, date, device name, counts per category), `database/pgdata.tar.gz`
+  (the whole database: projects, tasks, notes, work history, settings and the Vault documents with
+  their files), `preferences.json` (theme, sounds, mascot, timer, assistant choice) and a readable copy
+  of every Vault file in `documents/`. _Import_ checks the file first (valid zip, manifest, checksum,
+  not made by a newer version, database readable; an older database is migrated automatically), shows
+  what it holds, and offers **Merge** (adds what is missing; the most recent version of a shared item
+  wins; everything in one transaction) or **Replace** (irreversible from the app, hence an explicit
+  confirmation). A **safety copy** of the current data is always written first, in
+  `<data folder>/sauvegardes/securite/`. A replacement is finished at the next start-up (two renames);
+  the previous data stays beside the new until it has started, and is put back if it does not.
+- **Data location.** The data folder defaults to `%APPDATA%\Atlas OS` and can be any folder, such as a
+  OneDrive, Google Drive, Dropbox or Syncthing folder. The choice is kept in `location.json` in
+  `%APPDATA%\Atlas OS` (it stays on the device). When changing, the data is _moved_ (copied, checked,
+  then removed from the old folder), or the folder is _used as it is_ (a second PC pointing at a folder
+  that already holds data); replacing a folder's data sets the old data aside, never deletes it.
+- **Automatic backup.** One `.atlasbackup` a day in a chosen folder (`AtlasOS-sauvegarde-auto-YYYY-MM-DD`),
+  keeping the 7 newest. Only files with exactly that name pattern are ever removed.
+
+**Two PCs, one folder.** While Atlas OS is open it keeps `atlas.lock` in the data folder (device name,
+time) up to date every 30 s and removes it on exit. A lock younger than 2 minutes held by another
+device shows _Atlas OS is already open on <device>_, with _read-only_ (a private copy is opened, every
+write is refused), _force_ or _quit_. An older lock is treated as abandoned. If another device takes the
+lock while this one is open, it offers to reload. The preferences are mirrored in `preferences.json` in
+the data folder, so a second PC looks the same.
+
+**Known limits.** Cloud sync was not tested with a real service (only ordinary folders). The activity log and the preferences are not merged in Merge mode. After a sudden stop the lock stays active for up to 2 minutes. Everything stays 100% local: no account, no server.
+
+Tests: `tests/api/backup.test.ts`, `tests/unit/electron-data.test.ts`,
+`src/components/lenses/my-data-card.test.tsx`.
+
 ## Other platforms
 
 `electron-builder.yml` has commented `mac` and `linux` blocks, and the shell code already branches on
