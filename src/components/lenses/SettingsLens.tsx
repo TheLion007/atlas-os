@@ -24,6 +24,8 @@ import type { MessageKey } from "@/i18n";
 import { useMediaQuery } from "@/lib/use-media-query";
 import pkg from "../../../package.json";
 import { useOllamaStore } from "@/lib/ollama-store";
+import { Row, Toggle } from "./settings-parts";
+import { MyDataCard } from "./MyDataCard";
 import { useOllama } from "../ai/use-ollama";
 import { ConfirmDialog } from "../create/ConfirmDialog";
 import { hrefKeepingState } from "../shell/nav";
@@ -40,6 +42,7 @@ const SECTIONS = [
   ["ai", "st.nav.ai"],
   ["shortcuts", "st.nav.shortcuts"],
   ["backup", "st.nav.backup"],
+  ["data", "st.nav.data"],
   ["feedback", "st.nav.feedback"],
   ["advanced", "st.nav.advanced"],
 ] as const;
@@ -59,41 +62,6 @@ const OTHER = [
   ["/decisions", "nav.decisions"],
   ["/risks", "nav.risks"],
 ] as const;
-
-function Toggle({
-  on,
-  onChange,
-  label,
-  quiet,
-}: {
-  on: boolean;
-  onChange: (on: boolean) => void;
-  label: string;
-  quiet?: boolean;
-}) {
-  return (
-    <button
-      type="button"
-      role="switch"
-      aria-checked={on}
-      aria-label={label}
-      data-sound={quiet ? "none" : undefined}
-      onClick={() => onChange(!on)}
-      className={cn(
-        "relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors duration-300",
-        on ? "bg-accent" : "bg-border-strong",
-      )}
-    >
-      <span
-        aria-hidden="true"
-        className={cn(
-          "absolute left-0.5 size-5 rounded-full bg-on-accent shadow-card transition-transform duration-300 ease-(--ease-spring)",
-          on && "translate-x-5",
-        )}
-      />
-    </button>
-  );
-}
 
 function Card({
   id,
@@ -126,18 +94,6 @@ function Card({
       </header>
       {children}
     </section>
-  );
-}
-
-function Row({ title, sub, children }: { title: string; sub?: string; children: React.ReactNode }) {
-  return (
-    <div className="flex items-center justify-between gap-4 border-t border-border py-3 first:border-t-0">
-      <div className="min-w-0">
-        <p className="text-[13.5px] font-semibold">{title}</p>
-        {sub && <p className="text-[12px] text-fg-subtle">{sub}</p>}
-      </div>
-      {children}
-    </div>
   );
 }
 
@@ -217,6 +173,7 @@ export function SettingsLens() {
     };
   }, []);
   const updates = useUpdates();
+  const desktopData = !!desktop && !!desktopBridge()?.data;
   const [confirm, setConfirm] = useState<"remove" | "restore" | null>(null);
   const root = useRef<HTMLDivElement>(null);
 
@@ -312,7 +269,7 @@ export function SettingsLens() {
         <h1 className="mb-[14px] ml-[10px] font-display text-[28px] font-extrabold tracking-[-0.03em]">
           {t("settings.title")}
         </h1>
-        {SECTIONS.map(([id, label]) => (
+        {SECTIONS.filter(([id]) => id !== "data" || desktopData).map(([id, label]) => (
           <button
             key={id}
             type="button"
@@ -700,6 +657,12 @@ export function SettingsLens() {
             </button>
           </div>
         </Card>
+
+        {desktopData && (
+          <Card id="data" title={t("md.title")} sub={t("md.sub")}>
+            <MyDataCard />
+          </Card>
+        )}
 
         <Card id="feedback" title={t("st.feedback")} sub={t("st.feedbackSub")}>
           <div className="grid gap-3 sm:grid-cols-2">
