@@ -134,3 +134,39 @@ export function triage(text: string, projects: readonly TriageProject[]): Triage
 export function triageCount(groups: readonly TriageGroup[]): number {
   return groups.reduce((n, g) => n + g.items.length, 0);
 }
+
+/**
+ * The same proposal, kept inside the element the assistant was opened from: nothing goes to
+ * another project or to the inbox. In a project or a sub-project, a "Projet :" line becomes a
+ * sub-project of it; in a task, every line becomes one of its sub-tasks.
+ */
+export function triageInScope(
+  groups: readonly TriageGroup[],
+  scope: { id: string; name: string; kind: "project" | "sub" | "task" },
+): TriageGroup[] {
+  const here = (items: TriageItem[]): TriageGroup => ({
+    kind: "existing",
+    projectId: scope.id,
+    name: scope.name,
+    items,
+  });
+  if (scope.kind === "task") {
+    const items = groups.flatMap((g) =>
+      (g.kind === "new-project" || g.kind === "new-sub") && g.items.length === 0
+        ? [{ title: g.name, high: false }]
+        : g.items,
+    );
+    return items.length ? [here(items)] : [];
+  }
+  const loose = groups.flatMap((g) => (g.kind === "inbox" || g.kind === "existing" ? g.items : []));
+  return [
+    ...(loose.length ? [here(loose)] : []),
+    ...groups.flatMap<TriageGroup>((g) =>
+      g.kind === "new-project"
+        ? [{ kind: "new-sub", name: g.name, items: g.items, under: null }]
+        : g.kind === "new-sub"
+          ? [g]
+          : [],
+    ),
+  ];
+}

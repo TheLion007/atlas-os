@@ -6,13 +6,19 @@ import { describeWriteError, useCreateObject, useGraph, useProgress } from "@/cl
 import { applyProposal, undoBatch } from "@/client/assistant-apply";
 import { useSource } from "@/client/provider";
 import { Mascot } from "@/design/Mascot";
-import { buildWorkspace, type Proposal } from "@/domain/assistant-plan";
+import {
+  buildWorkspace,
+  scopeSentence,
+  scopeWorkspace,
+  type AssistantScope,
+  type Proposal,
+} from "@/domain/assistant-plan";
 import { runAssistant } from "@/domain/assistant-run";
 import { POINTS_PER_TASK, batchSize, useAssistantUndo } from "@/lib/assistant-undo";
 import { AssistantProposal } from "./AssistantProposal";
 import type { ApiObject } from "@/domain/api-types";
 import { descendantsOf } from "@/domain/project-view";
-import { triage, triageCount, type TriageGroup } from "@/domain/triage";
+import { triage, triageCount, triageInScope, type TriageGroup } from "@/domain/triage";
 import { projectColor } from "@/design/palette";
 import { useI18n } from "@/i18n/I18nProvider";
 import { celebrate, useFeedback } from "@/lib/feedback/celebrate";
@@ -36,8 +42,11 @@ function dueOf(n: ApiObject): string | null {
  * The assistant as the design draws it: write loose ideas, one per line, and it proposes where each
  * goes (an existing project, a new project or sub-project, or the inbox); "Add all" then really
  * creates them. Three quick questions answer from the real data. Nothing is sent anywhere.
+ *
+ * Opened from a project, a sub-project or a task (`scope`), it works inside that element only:
+ * what it creates goes there and its answers are about it, until "Global mode" is chosen.
  */
-function AssistantMain({ ollama }: { ollama: UseOllama }) {
+function AssistantMain({ ollama, scope }: { ollama: UseOllama; scope: AssistantScope | null }) {
   const { t } = useI18n();
   const graph = useGraph();
   const source = useSource();
@@ -46,6 +55,9 @@ function AssistantMain({ ollama }: { ollama: UseOllama }) {
   const pushToast = useUi((s) => s.pushToast);
   const react = useFeedback((s) => s.react);
   const [idea, setIdea] = useState("");
+  // The context is on by default every time the assistant opens; global mode is a choice.
+  const [globalMode, setGlobalMode] = useState(false);
+  const active = globalMode ? null : scope;
   const [thinking, setThinking] = useState(false);
   const [groups, setGroups] = useState<TriageGroup[] | null>(null);
   const [reply, setReply] = useState<string | null>(null);
@@ -91,6 +103,24 @@ function AssistantMain({ ollama }: { ollama: UseOllama }) {
     [nodes],
   );
   const byId = useMemo(() => new Map(nodes.map((n) => [n.id, n])), [nodes]);
+  /** What the active context holds (itself included), or null when the whole app is in play. */
+  const inside = useMemo(() => {
+    if (!active) return null;
+    const ids = descendantsOf(active.id, edges);
+    ids.add(active.id);
+    return ids;
+  }, [active, edges]);
+
+  const switchMode = (next: boolean) => {
+    playSound("click");
+    abort.current?.abort();
+    setGlobalMode(next);
+    // A proposal belongs to the mode it was made in.
+    setProposal(null);
+    setGroups(null);
+    setReply(null);
+    setAiError(null);
+  };
 
   const organize = () => {
     const text = idea.trim();
@@ -108,6 +138,14 @@ function AssistantMain({ ollama }: { ollama: UseOllama }) {
     setGroups(null);
     setReply(null);
     window.setTimeout(() => {
+      if (active) {
+        // Inside a context nothing is matched against other projects: it all goes here.
+        playSound("create");
+        setGroups(triageInScope(triage(text, []), active));
+        setThinking(false);
+        react("happy", t("assistant.sorted"));
+        return;
+      }
       const tasks = nodes.filter((n) => n.type === "task");
       const mapped = projects.map((p) => {
         const inside = descendantsOf(p.id, edges);
@@ -134,13 +172,14 @@ function AssistantMain({ ollama }: { ollama: UseOllama }) {
     setPartial(0);
     setReading(true);
     react("happy", null);
-    const ws = buildWorkspace(nodes, edges);
+    const ws = active ? scopeWorkspace(active, nodes, edges) : buildWorkspace(nodes, edges);
     const ctl = new AbortController();
     abort.current = ctl;
     const model = ollama.model;
     const res = await runAssistant({
       text,
       workspace: ws,
+      scope: active,
       today,
       signal: ctl.signal,
       ask: (messages, opts) => askOllama(model, messages, ctl.signal, opts),
@@ -230,9 +269,11 @@ function AssistantMain({ ollama }: { ollama: UseOllama }) {
       for (const g of groups) {
         let parent: string | null = null;
         if (g.kind === "new-project" || g.kind === "new-sub") {
-          const under = g.kind === "new-sub" && g.under ? (ids.get(g.under) ?? null) : null;
+          // Inside a project or a sub-project, what is new is made in it.
+          const home = active && active.kind !== "task" ? active.id : null;
+          const under = (g.kind === "new-sub" && g.under ? ids.get(g.under) : null) ?? home;
           // A sub-project needs a project above it; without one it becomes a project of its own.
-          const asSub = g.kind === "new-sub" && under !== null;
+          const asSub = under !== null && (g.kind === "new-sub" || home !== null);
           const created = await create.mutateAsync({
             input: {
               type: asSub ? "sub_project" : "project",
@@ -267,13 +308,19 @@ function AssistantMain({ ollama }: { ollama: UseOllama }) {
     setGroups(null);
     const open = nodes
       .filter((n) => n.type === "task" && (n.status === "draft" || n.status === "active"))
+      .filter((n) => !inside || (inside.has(n.id) && n.id !== active?.id))
       .sort((a, b) => (dueOf(a) ?? "9999").localeCompare(dueOf(b) ?? "9999"));
     let text: string;
     if (kind === "week") {
       const since = new Date(`${today}T12:00:00Z`);
       since.setUTCDate(since.getUTCDate() - 6);
       const from = since.toISOString().slice(0, 10);
-      const week = (progress.data ?? []).filter((e) => e.day >= from && e.day <= today);
+      const week = (progress.data ?? []).filter(
+        (e) =>
+          e.day >= from &&
+          e.day <= today &&
+          (!inside || (e.objectId !== null && inside.has(e.objectId))),
+      );
       const per = new Map<string, number>();
       for (const e of week) if (e.projectId) per.set(e.projectId, (per.get(e.projectId) ?? 0) + 1);
       const top = [...per.entries()].sort((a, b) => b[1] - a[1]).slice(0, 2);
@@ -326,7 +373,10 @@ function AssistantMain({ ollama }: { ollama: UseOllama }) {
     const res = await askOllama(
       model,
       [
-        { role: "system", content: `${SYSTEM_PROMPT}\n\n${assistantContext(nodes, edges, today)}` },
+        {
+          role: "system",
+          content: `${SYSTEM_PROMPT}\n\n${assistantContext(nodes, edges, today, active)}`,
+        },
         { role: "user", content: text },
       ],
       ctl.signal,
@@ -355,6 +405,40 @@ function AssistantMain({ ollama }: { ollama: UseOllama }) {
 
   return (
     <div className="flex min-h-0 grow flex-col">
+      {scope && (
+        <div className="flex shrink-0 items-center gap-2 px-5 pt-3">
+          <span
+            role="status"
+            aria-label={t("ai.scope.label")}
+            title={
+              active ? t("ai.scope.in", { where: scopeSentence(active) }) : t("ai.scope.global")
+            }
+            className="inline-flex min-w-0 items-center gap-[7px] rounded-full border border-border bg-sunk px-[10px] py-[4px] text-[12px]"
+          >
+            <span
+              className="size-[6px] shrink-0 rounded-full"
+              style={{ background: active ? "var(--color-accent)" : "var(--color-fg-subtle)" }}
+              aria-hidden="true"
+            />
+            <span className="min-w-0 truncate font-medium">
+              {active ? active.trail.join(" › ") : t("ai.scope.global")}
+            </span>
+            {active && (
+              <span className="shrink-0 text-[10.5px] text-fg-subtle">
+                {t(`ai.kind.${active.kind}`)}
+              </span>
+            )}
+          </span>
+          <button
+            type="button"
+            onClick={() => switchMode(!globalMode)}
+            aria-pressed={globalMode}
+            className="ml-auto max-w-[45%] shrink-0 truncate rounded-full border border-border-strong bg-surface px-[10px] py-[4px] text-[12px] font-medium transition-[background-color,transform] hover:bg-sunk active:scale-[0.97]"
+          >
+            {globalMode ? t("ai.scope.back", { name: scope.name }) : t("ai.scope.goGlobal")}
+          </button>
+        </div>
+      )}
       <div className="min-h-0 grow overflow-y-auto px-5 pt-4 pb-5">
         <div className="rounded-[16px] border border-border bg-surface p-3 shadow-card">
           <textarea
@@ -367,7 +451,15 @@ function AssistantMain({ ollama }: { ollama: UseOllama }) {
               }
             }}
             aria-label={t("assistant.ideas")}
-            placeholder={aiReady ? t("ai.struct.placeholder") : t("assistant.placeholder")}
+            placeholder={
+              active
+                ? t(active.kind === "task" ? "ai.scope.placeholderTask" : "ai.scope.placeholder", {
+                    name: active.name,
+                  })
+                : aiReady
+                  ? t("ai.struct.placeholder")
+                  : t("assistant.placeholder")
+            }
             rows={6}
             className="w-full resize-y bg-transparent text-[13.5px] leading-[1.55] outline-none! placeholder:text-fg-subtle"
           />
@@ -376,7 +468,13 @@ function AssistantMain({ ollama }: { ollama: UseOllama }) {
               type="button"
               onClick={() => {
                 playSound("click");
-                setIdea(aiReady ? t("ai.struct.sample") : t("assistant.sample"));
+                setIdea(
+                  active && aiReady
+                    ? t(active.kind === "task" ? "ai.scope.sampleTask" : "ai.scope.sample")
+                    : aiReady
+                      ? t("ai.struct.sample")
+                      : t("assistant.sample"),
+                );
               }}
               className="h-8 rounded-[10px] border border-border-strong bg-surface px-3 text-[12px] font-medium transition-[background-color,transform] hover:bg-sunk active:scale-[0.97]"
             >
@@ -610,7 +708,9 @@ function AssistantMain({ ollama }: { ollama: UseOllama }) {
               onChange={(e) => setQuestion(e.target.value)}
               disabled={asking}
               aria-label={t("ai.ask")}
-              placeholder={t("ai.askPlaceholder")}
+              placeholder={
+                active ? t("ai.scope.ask", { name: active.name }) : t("ai.askPlaceholder")
+              }
               className="h-10 min-w-0 flex-1 rounded-[12px] border border-border-strong bg-surface px-3 text-[13px] outline-none! placeholder:text-fg-subtle focus-visible:border-accent disabled:opacity-60"
             />
             <button
@@ -673,7 +773,7 @@ function AssistantMain({ ollama }: { ollama: UseOllama }) {
  * quick questions) keeps working with only the AI answers off. Ollama is looked for when the
  * assistant opens, and every few seconds while the tutorial is on screen.
  */
-export function AssistantPanel() {
+export function AssistantPanel({ scope = null }: { scope?: AssistantScope | null }) {
   const ollama = useOllama(false);
   const tutorial = useOllamaStore((st) => st.tutorial);
   const dismissed = useOllamaStore((st) => st.dismissed);
@@ -702,5 +802,5 @@ export function AssistantPanel() {
         }}
       />
     );
-  return <AssistantMain ollama={ollama} />;
+  return <AssistantMain ollama={ollama} scope={scope} />;
 }

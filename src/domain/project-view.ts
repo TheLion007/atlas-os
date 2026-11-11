@@ -154,7 +154,7 @@ export interface BoardCard {
   status: BoardColumn;
   due: string | null;
   late: boolean;
-  /** The sub-project it sits in, when it is not directly in the project. */
+  /** The sub-project (or, for a sub-task, the task) it sits in, when not directly in the project. */
   group: string | null;
 }
 
@@ -181,7 +181,10 @@ export function projectBoard(
       status: n.status,
       due,
       late: n.status !== "done" && due !== null && due < today,
-      group: parentNode && parentNode.type === "sub_project" ? parentNode.title : null,
+      group:
+        parentNode && (parentNode.type === "sub_project" || parentNode.type === "task")
+          ? parentNode.title
+          : null,
     });
   }
   const byDue = (a: BoardCard, b: BoardCard) =>

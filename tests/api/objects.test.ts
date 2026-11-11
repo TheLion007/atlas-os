@@ -241,9 +241,10 @@ describe("validation", () => {
     const user = h.newUser();
     const t1 = await create(user, { type: "task", title: "t1", details: {} });
     const before = (await list(user)).body.total;
+    // A task may hold sub-tasks, never a sub-project.
     const res = await create(user, {
-      type: "task",
-      title: "t2",
+      type: "sub_project",
+      title: "s2",
       details: {},
       relations: [{ kind: "contains", direction: "in", other: t1.body.id }],
     });

@@ -123,6 +123,19 @@ export const ai = area(
       "I found nothing to create in this text: no plan, project, task, note or deadline.",
     "ai.struct.firstLoad": "First load of the model, this can take a minute. It only happens once.",
     "ai.struct.warming": "Getting the model ready…",
+    "ai.scope.label": "Active context",
+    "ai.scope.in": "The assistant works inside {where}",
+    "ai.scope.global": "Whole application",
+    "ai.scope.goGlobal": "Global mode",
+    "ai.scope.back": "Back to {name}",
+    "ai.scope.placeholder": "Write what to add to “{name}”: sub-projects, tasks, notes…",
+    "ai.scope.placeholderTask": "Write the sub-tasks of “{name}”, loosely",
+    "ai.scope.sample":
+      "Add map management, with draw the terrain and place the spawns, and fix the jump bug",
+    "ai.scope.sampleTask": "First make a sketch, then sculpt the hills and paint the grass",
+    "ai.scope.ask": "Ask about “{name}”…",
+    "ai.struct.toTask": "Turn {title} into a task",
+    "ai.struct.toSub": "Turn {title} into a sub-project",
   },
   {
     "ai.reassure": "Ton assistant tourne sur ton propre PC. Rien n’est envoyé sur internet.",
@@ -247,5 +260,20 @@ export const ai = area(
     "ai.struct.firstLoad":
       "Premier chargement du modèle, ça peut prendre une minute. Ça n’arrive qu’une fois.",
     "ai.struct.warming": "Je prépare le modèle…",
+    "ai.scope.label": "Contexte actif",
+    "ai.scope.in": "L’assistant agit dans {where}",
+    "ai.scope.global": "Toute l’application",
+    "ai.scope.goGlobal": "Mode global",
+    "ai.scope.back": "Revenir à {name}",
+    "ai.scope.placeholder":
+      "Écris ce qu’il faut ajouter dans « {name} » : sous-projets, tâches, notes…",
+    "ai.scope.placeholderTask": "Écris en vrac les sous-tâches de « {name} »",
+    "ai.scope.sample":
+      "Ajoute la gestion de la map, avec dessiner le terrain et placer les spawns, et il faut corriger le bug du saut",
+    "ai.scope.sampleTask":
+      "D’abord faire un croquis, puis sculpter les collines et peindre l’herbe",
+    "ai.scope.ask": "Pose une question sur « {name} »…",
+    "ai.struct.toTask": "Changer {title} en tâche",
+    "ai.struct.toSub": "Changer {title} en sous-projet",
   },
 );

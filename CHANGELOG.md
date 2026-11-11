@@ -3,6 +3,24 @@
 Versions are listed newest first. Each entry is in English, then in French.
 Les versions sont listées de la plus récente à la plus ancienne. Chaque entrée est en anglais, puis en français.
 
+## 1.1.2 — 2026-11-11 — Contextual assistant / Assistant contextuel
+
+### English
+
+- **The assistant is now contextual: opened from a project, a sub-project or a task, it acts only inside that element.** A badge at the top of the panel shows the active context (for example "Roblox game › Map"), with a **Global mode** button to act on the whole application again. Opened anywhere else, it behaves as before.
+- From a project it creates sub-projects or tasks; from a sub-project, tasks or sub-sub-projects; from a task, **sub-tasks**. It no longer creates duplicate projects and never goes looking elsewhere.
+- It tells a sub-project (a set of tasks with its own goal, like "Map management") from a task (one precise action to tick, like "Draw the terrain"), and you can switch a proposed item from one to the other.
+- Questions and quick answers (week, urgent, day) also stay inside the context.
+- Tasks can now hold sub-tasks. Your data is migrated automatically; everything stays 100% local.
+
+### Français
+
+- **L'assistant est maintenant contextuel : ouvert depuis un projet, un sous-projet ou une tâche, il agit uniquement dans cet élément.** Un badge en haut du panneau indique le contexte actif (par exemple « Jeu Roblox › Map »), avec un bouton **Mode global** pour agir de nouveau sur toute l'application. Ouvert ailleurs, il se comporte comme avant.
+- Depuis un projet, il crée des sous-projets ou des tâches ; depuis un sous-projet, des tâches ou des sous-sous-projets ; depuis une tâche, des **sous-tâches**. Il ne crée plus de projets en double et ne va jamais chercher ailleurs.
+- Il distingue un sous-projet (un ensemble de tâches avec un objectif propre, comme « Gestion de la map ») d'une tâche (une action précise à cocher, comme « Dessiner le terrain »), et tu peux basculer un élément proposé de l'un à l'autre.
+- Les questions et les réponses rapides (semaine, urgent, journée) restent aussi dans le contexte.
+- Une tâche peut maintenant contenir des sous-tâches. Tes données sont migrées automatiquement ; tout reste 100 % local.
+
 ## 1.1.1 — 2026-11-09 — Sub-projects / Sous-projets
 
 ### English

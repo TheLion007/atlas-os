@@ -25,6 +25,8 @@ export const EDGE_RULES: Readonly<Record<EdgeKind, readonly EdgeRule[]>> = {
       to: ["sub_project", "task", "milestone", "risk", "decision", "property", "event"],
     },
     { from: ["location"], to: ["location"] },
+    // A task may be cut into sub-tasks.
+    { from: ["task"], to: ["task"] },
     // A plan groups several standalone projects (never sub-projects/tasks directly).
     { from: ["plan"], to: ["project"] },
   ],

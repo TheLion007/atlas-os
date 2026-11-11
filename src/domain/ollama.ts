@@ -1,5 +1,6 @@
 import type { ApiEdge, ApiObject } from "./api-types";
-import { projectCards } from "./project-view";
+import { scopeSentence, type AssistantScope } from "./assistant-plan";
+import { descendantsOf, projectCards } from "./project-view";
 
 /**
  * The optional local assistant (Ollama), as pure logic. Everything stays on the person's own PC:
@@ -78,7 +79,9 @@ export function assistantContext(
   nodes: readonly ApiObject[],
   edges: readonly ApiEdge[],
   today: string,
+  scope?: AssistantScope | null,
 ): string {
+  if (scope) return scopedContext(nodes, edges, today, scope);
   const cards = projectCards(nodes, edges, today);
   const lines: string[] = [`Date du jour : ${today}.`, "", "Projets :"];
   if (cards.length === 0) lines.push("- (aucun projet)");
@@ -95,5 +98,35 @@ export function assistantContext(
   lines.push("", "Prochaines tâches ouvertes :");
   if (open.length === 0) lines.push("- (aucune)");
   for (const { n, due } of open) lines.push(`- ${n.title}${due ? ` (pour le ${due})` : ""}`);
+  return lines.join("\n");
+}
+
+/** The same summary, for a question asked from inside a project, a sub-project or a task. */
+function scopedContext(
+  nodes: readonly ApiObject[],
+  edges: readonly ApiEdge[],
+  today: string,
+  scope: AssistantScope,
+): string {
+  const inside = descendantsOf(scope.id, edges);
+  const mine = nodes.filter((n) => inside.has(n.id) && n.status !== "dropped");
+  const tasks = mine.filter((n) => n.type === "task");
+  const open = tasks
+    .filter((n) => n.status !== "done")
+    .map((n) => ({ n, due: typeof n.details?.due === "string" ? (n.details.due as string) : null }))
+    .sort((a, b) => (a.due ?? "9999").localeCompare(b.due ?? "9999"));
+  const lines = [
+    `Date du jour : ${today}.`,
+    "",
+    `Contexte actif : ${scopeSentence(scope)}. La question porte sur cet élément : ne parle pas des autres projets.`,
+    `Chemin : ${scope.trail.join(" › ")}`,
+    `${tasks.length - open.length} tâche(s) terminée(s), ${open.length} ouverte(s).`,
+  ];
+  const subs = mine.filter((n) => n.type === "sub_project");
+  if (subs.length) lines.push("", "Sous-projets dedans :", ...subs.map((n) => `- ${n.title}`));
+  lines.push("", "Prochaines tâches ouvertes :");
+  if (open.length === 0) lines.push("- (aucune)");
+  for (const { n, due } of open.slice(0, MAX_TASKS))
+    lines.push(`- ${n.title}${due ? ` (pour le ${due})` : ""}`);
   return lines.join("\n");
 }

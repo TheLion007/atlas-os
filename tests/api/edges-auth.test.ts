@@ -166,9 +166,10 @@ describe("POST /api/edges", () => {
     expect(cycle.status).toBe(422);
     expect(cycle.body.error.message).toMatch(/cycle/);
 
-    const bad = await relate(user, { kind: "contains", from: a, to: b });
+    const project = await mk(user, "project", "P");
+    const bad = await relate(user, { kind: "contains", from: a, to: project });
     expect(bad.status).toBe(422);
-    expect(bad.body.error.message).toMatch(/a task cannot contains a task/);
+    expect(bad.body.error.message).toMatch(/a task cannot contains a project/);
   });
 
   it("answers 400 for malformed input and 422 for missing endpoints", async () => {
