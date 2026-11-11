@@ -3,9 +3,10 @@ import {
   chunkText,
   correctiveMessage,
   parseActions,
-  SYSTEM_PROMPT_STRUCT,
+  systemPrompt,
   userMessage,
   type AssistantAction,
+  type AssistantScope,
   type Proposal,
   type Workspace,
 } from "./assistant-plan";
@@ -41,7 +42,10 @@ export type RunResult =
 
 export interface RunInput {
   text: string;
+  /** Everything that exists, or only what the active context holds when `scope` is given. */
   workspace: Workspace;
+  /** The element the assistant was opened from: everything is then made inside it. */
+  scope?: AssistantScope | null;
   today: string;
   ask: Ask;
   signal?: AbortSignal;
@@ -51,6 +55,7 @@ export interface RunInput {
 
 export async function runAssistant(input: RunInput): Promise<RunResult> {
   const pieces = chunkText(input.text, input.chunkSize);
+  const scope = input.scope ?? null;
   const actions: AssistantAction[] = [];
   let failed = 0;
   let retries = 0;
@@ -58,12 +63,12 @@ export async function runAssistant(input: RunInput): Promise<RunResult> {
   for (const [i, piece] of pieces.entries()) {
     if (input.signal?.aborted) return { ok: false, code: "cancelled" };
     const base: Msg[] = [
-      { role: "system", content: SYSTEM_PROMPT_STRUCT },
-      { role: "user", content: userMessage(input.workspace, input.today, piece) },
+      { role: "system", content: systemPrompt(scope) },
+      { role: "user", content: userMessage(input.workspace, input.today, piece, scope) },
     ];
     let res = await input.ask(base, { json: true, temperature: 0.1 });
     if (!res.ok) return { ok: false, code: res.code };
-    let parsed = parseActions(res.answer);
+    let parsed = parseActions(res.answer, scope !== null);
     if (!parsed.ok) {
       retries++;
       res = await input.ask(
@@ -75,14 +80,14 @@ export async function runAssistant(input: RunInput): Promise<RunResult> {
         { json: true, temperature: 0 },
       );
       if (!res.ok) return { ok: false, code: res.code };
-      parsed = parseActions(res.answer);
+      parsed = parseActions(res.answer, scope !== null);
     }
     if (parsed.ok) actions.push(...parsed.actions);
     else failed++;
     input.onProgress?.(i + 1, pieces.length);
   }
   if (pieces.length > 0 && failed === pieces.length) return { ok: false, code: "weak" };
-  const proposal = buildProposal(actions, input.workspace);
+  const proposal = buildProposal(actions, input.workspace, scope);
   if (proposal.nodes.length === 0 && proposal.skipped === 0) return { ok: false, code: "empty" };
   return { ok: true, proposal, actions, chunks: pieces.length, failedChunks: failed, retries };
 }

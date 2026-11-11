@@ -35,7 +35,7 @@ describe("edge type matrix", () => {
   });
 
   it.each([
-    ["contains", "task", "task"],
+    ["contains", "task", "sub_project"],
     ["contains", "project", "estimate"],
     ["depends_on", "note", "task"],
     ["estimates", "task", "property"],

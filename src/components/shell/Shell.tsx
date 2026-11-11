@@ -5,6 +5,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useGraph, useSettings } from "@/client/hooks";
 import { CreateDialog } from "../create/CreateDialog";
+import { resolveScope } from "@/domain/assistant-plan";
 import { useI18n } from "@/i18n/I18nProvider";
 import { useScenario, usePeek } from "@/lib/url-state";
 import { AssistantSheet } from "./AIThread";
@@ -169,9 +170,23 @@ function PaletteHost() {
 function AssistantHost() {
   const open = useUi((s) => s.assistantOpen);
   const setOpen = useUi((s) => s.setAssistantOpen);
+  const pathname = usePathname();
+  const [peekId] = usePeek();
+  const graph = useGraph();
+  // Where the assistant is opened from: the object in the side panel, else the object whose page
+  // is on screen. Only a project, a sub-project or a task gives a context; anywhere else, none.
+  const scope = useMemo(() => {
+    if (!open || !graph.data) return null;
+    const { nodes, edges } = graph.data;
+    const pageId = /^\/objects\/([^/]+)/.exec(pathname)?.[1];
+    return (
+      resolveScope(peekId, nodes, edges) ??
+      resolveScope(pageId ? decodeURIComponent(pageId) : null, nodes, edges)
+    );
+  }, [open, graph.data, pathname, peekId]);
   return (
     <AssistantSheet open={open} onOpenChange={setOpen}>
-      <AssistantPanel />
+      <AssistantPanel scope={scope} />
     </AssistantSheet>
   );
 }

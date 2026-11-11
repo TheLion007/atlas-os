@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import {
+  canSwitchKind,
   childrenOf,
   countProposal,
   isActive,
@@ -10,6 +11,7 @@ import {
   parentChoices,
   setChecked,
   setTitle,
+  switchKind,
   withExisting,
   type NodeKind,
   type PNode,
@@ -169,9 +171,28 @@ export function AssistantProposal({
             />
           </span>
           {n.due && <span className="num shrink-0 text-[10.5px] text-fg-subtle">{n.due}</span>}
-          <span className="shrink-0 rounded-full bg-sunk px-2 py-[2px] text-[10.5px] text-fg-muted">
-            {hint ? `${kindLabel(n.kind)} · ${hint}` : kindLabel(n.kind)}
-          </span>
+          {canSwitchKind(proposal, n) ? (
+            <button
+              type="button"
+              onClick={() => {
+                playSound("click");
+                onChange(switchKind(proposal, n.key));
+              }}
+              title={t(n.kind === "sub" ? "ai.struct.toTask" : "ai.struct.toSub", {
+                title: n.title,
+              })}
+              aria-label={t(n.kind === "sub" ? "ai.struct.toTask" : "ai.struct.toSub", {
+                title: n.title,
+              })}
+              className="shrink-0 rounded-full bg-sunk px-2 py-[2px] text-[10.5px] text-fg-muted transition-colors hover:bg-border hover:text-fg"
+            >
+              {kindLabel(n.kind)} ⇄
+            </button>
+          ) : (
+            <span className="shrink-0 rounded-full bg-sunk px-2 py-[2px] text-[10.5px] text-fg-muted">
+              {hint ? `${kindLabel(n.kind)} · ${hint}` : kindLabel(n.kind)}
+            </span>
+          )}
           {mover(n)}
         </div>
         {kids.length > 0 && (

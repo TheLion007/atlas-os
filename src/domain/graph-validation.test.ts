@@ -10,7 +10,8 @@ describe("isEdgeAllowed", () => {
     ["contains", "project", "task", true],
     ["contains", "sub_project", "sub_project", true],
     ["contains", "location", "location", true],
-    ["contains", "task", "task", false],
+    ["contains", "task", "task", true],
+    ["contains", "task", "sub_project", false],
     ["contains", "project", "estimate", false],
     ["contains", "location", "task", false],
     ["depends_on", "milestone", "task", true],
@@ -70,7 +71,9 @@ describe("validateNewEdge", () => {
   });
 
   it("rejects illegal type pairs", () => {
-    const codes = validateNewEdge(cand("contains", "t1", "t2"), []).map((v) => v.code);
+    const codes = validateNewEdge(cand("contains", "t1", "p", "task", "project"), []).map(
+      (v) => v.code,
+    );
     expect(codes).toContain("type_not_allowed");
   });
 
