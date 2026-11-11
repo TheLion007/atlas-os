@@ -3,7 +3,7 @@
 Versions are listed newest first. Each entry is in English, then in French.
 Les versions sont listées de la plus récente à la plus ancienne. Chaque entrée est en anglais, puis en français.
 
-## 1.2.0 — 2026-11-11 — Contextual assistant / Assistant contextuel
+## 1.1.2 — 2026-11-11 — Contextual assistant / Assistant contextuel
 
 ### English
 
