@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { useProgress } from "@/client/hooks";
-import { Mascot } from "@/design/Mascot";
+import { MascotHero } from "@/design/mascot3d/MascotHero";
 import { spotlightMove } from "@/lib/use-spotlight";
 import { projectColor } from "@/design/palette";
 import type { ApiEdge, ApiObject } from "@/domain/api-types";
@@ -301,7 +301,7 @@ export function HomeScreen({ nodes, edges, today }: HomeScreenProps) {
           aria-hidden="true"
           className="ambient-breathe pointer-events-none absolute -top-10 -left-10 -z-10 size-[260px] rounded-full bg-accent-soft blur-[64px]"
         />
-        {mascotOn && <Mascot kind={mascot} mood={mood} size={104} track={tracks} />}
+        {mascotOn && <MascotHero kind={mascot} mood={mood} size={128} track={tracks} />}
         <div className="flex min-w-[280px] flex-1 flex-col gap-2">
           <span className="num text-[11px] font-semibold tracking-[0.09em] text-accent-ink uppercase">
             {new Date(`${today}T12:00:00Z`).toLocaleDateString(locale, {
