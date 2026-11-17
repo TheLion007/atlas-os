@@ -13,6 +13,7 @@ import {
 } from "three";
 import type { Outfit } from "./accessories";
 import { EXPRESSIONS, PIP, type PipExpression } from "./expressions";
+import { Laptop3D } from "./Laptop3D";
 import { Outfit3D } from "./Outfit3D";
 
 interface Look {
@@ -416,9 +417,12 @@ function PipModel({
             <Ink />
           </mesh>
         </group>
-        <Hand side={1} pivot={armR} />
-        <Hand side={-1} pivot={armL} />
+        <group visible={expression !== "working"}>
+          <Hand side={1} pivot={armR} />
+          <Hand side={-1} pivot={armL} />
+        </group>
       </group>
+      {expression === "working" && <Laptop3D />}
       {expression === "thinking" && <Bubbles color={PIP.think} speed={3} />}
       {expression === "working" && <Bubbles color={PIP.work} speed={7} />}
       {expression === "error" && (
