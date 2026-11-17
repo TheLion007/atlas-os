@@ -6,6 +6,7 @@ import { projectColor } from "@/design/palette";
 import type { ProjectCard } from "@/domain/project-view";
 import { useI18n } from "@/i18n/I18nProvider";
 import { cn } from "@/lib/cn";
+import { spotlightMove } from "@/lib/use-spotlight";
 import { hrefKeepingState } from "../shell/nav";
 
 /** A thin bar that fills with a spring when it first appears: progress you can watch arrive. */
@@ -54,7 +55,8 @@ export function ProjectCardView({ card }: { card: ProjectCard }) {
     <Link
       href={hrefKeepingState(`/objects/${card.id}`, params)}
       aria-label={t("proj.open", { title: card.title })}
-      className="group relative flex min-w-0 flex-col gap-4 overflow-hidden rounded-card border border-border bg-surface p-4 shadow-card transition-[transform,box-shadow] duration-(--duration-panel) ease-(--ease-spring) hover:-translate-y-1 hover:shadow-pop"
+      onPointerMove={spotlightMove}
+      className="spotlight group flex min-w-0 flex-col gap-4 overflow-hidden rounded-card border border-border bg-surface p-4 shadow-card transition-[transform,box-shadow] duration-(--duration-panel) ease-(--ease-spring) hover:-translate-y-1 hover:shadow-pop"
     >
       <span
         aria-hidden="true"

@@ -315,6 +315,46 @@ h3 {
   animation: rise-in var(--duration-panel) var(--ease-state);
 }
 
+/* A soft glow that follows the pointer across a card (position fed by `spotlightMove`).
+   The element must be `relative`; the glow sits under its content and never takes the click. */
+@utility spotlight {
+  position: relative;
+  isolation: isolate;
+  &::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity var(--duration-panel) var(--ease-state);
+    background: radial-gradient(
+      240px circle at var(--sx, 50%) var(--sy, 50%),
+      color-mix(in srgb, var(--color-accent) 16%, transparent),
+      transparent 70%
+    );
+  }
+  &:hover::before {
+    opacity: 1;
+  }
+}
+
+/* Slow breathing of the soft light behind the hero mascot. */
+@keyframes ambient-breathe {
+  0%,
+  100% {
+    opacity: 0.55;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.9;
+    transform: scale(1.12);
+  }
+}
+@utility ambient-breathe {
+  animation: ambient-breathe 6s ease-in-out infinite;
+}
+
 /* ── Map pins (DOM markers on the globe) ───────────────────────────────────────────────────
    Flat, hairline, no shadows. Sand appears only on the selected pin: the one focal element. */
 .atlas-pin {
