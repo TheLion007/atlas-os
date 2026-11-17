@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { useProgress } from "@/client/hooks";
 import { Mascot } from "@/design/Mascot";
 import { spotlightMove } from "@/lib/use-spotlight";
@@ -32,7 +32,6 @@ import { hrefKeepingState } from "../shell/nav";
 import { useUi } from "../shell/ui-store";
 
 const SPRING = "cubic-bezier(0.34, 1.56, 0.64, 1)";
-const tint = (hex: string, pct: number) => `color-mix(in srgb, ${hex} ${pct}%, transparent)`;
 
 const due = (n: ApiObject): string | null => {
   const v = n.details?.due ?? n.details?.date;
@@ -711,18 +710,11 @@ function HomeProjectCard({
     <Link
       href={href}
       onPointerMove={spotlightMove}
-      className="spotlight flex h-full flex-col gap-[14px] overflow-hidden rounded-[18px] border border-border bg-surface p-[18px] text-left shadow-card transition-[transform,box-shadow,border-color] duration-500 ease-(--ease-spring) hover:-translate-y-[5px] hover:-rotate-[0.5deg] hover:border-border-strong hover:shadow-pop active:scale-[0.98]"
+      style={{ "--neon": hex } as CSSProperties}
+      className="spotlight neon flex h-full flex-col gap-[14px] overflow-hidden rounded-[18px] border border-border bg-surface p-[18px] text-left shadow-card hover:-translate-y-[5px] hover:-rotate-[0.5deg] active:scale-[0.98]"
     >
-      <div
-        aria-hidden="true"
-        className="absolute -top-[34px] -right-[34px] size-[104px] rounded-full"
-        style={{ background: tint(hex, 14) }}
-      />
       <div className="relative flex items-center justify-between">
-        <span className="num flex items-center gap-[7px] text-[11px] text-fg-muted">
-          <i className="size-[9px] rounded-[3px]" style={{ background: hex }} />
-          {kind}
-        </span>
+        <span className="num flex items-center gap-[7px] text-[11px] text-fg-muted">{kind}</span>
         <span className="text-[11.5px] font-semibold text-fg-muted">
           {t(
             `hm.status.${card.status === "dropped" ? "draft" : card.status}` as "hm.status.active",

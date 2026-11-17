@@ -1,5 +1,6 @@
 "use client";
 
+import type { CSSProperties } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { projectColor } from "@/design/palette";
@@ -56,13 +57,9 @@ export function ProjectCardView({ card }: { card: ProjectCard }) {
       href={hrefKeepingState(`/objects/${card.id}`, params)}
       aria-label={t("proj.open", { title: card.title })}
       onPointerMove={spotlightMove}
-      className="spotlight group flex min-w-0 flex-col gap-4 overflow-hidden rounded-card border border-border bg-surface p-4 shadow-card transition-[transform,box-shadow] duration-(--duration-panel) ease-(--ease-spring) hover:-translate-y-1 hover:shadow-pop"
+      style={{ "--neon": color } as CSSProperties}
+      className="spotlight neon group flex min-w-0 flex-col gap-4 overflow-hidden rounded-card border border-border bg-surface p-4 shadow-card hover:-translate-y-1"
     >
-      <span
-        aria-hidden="true"
-        className="absolute inset-x-0 top-0 h-1.5"
-        style={{ background: color }}
-      />
       <div className="flex flex-col gap-1 pt-1">
         <h3 className="truncate text-lg leading-tight font-extrabold">{card.title}</h3>
         {card.description && (

@@ -330,12 +330,29 @@ h3 {
     transition: opacity var(--duration-panel) var(--ease-state);
     background: radial-gradient(
       240px circle at var(--sx, 50%) var(--sy, 50%),
-      color-mix(in srgb, var(--color-accent) 16%, transparent),
+      color-mix(in srgb, var(--neon, var(--color-accent)) 16%, transparent),
       transparent 70%
     );
   }
   &:hover::before {
     opacity: 1;
+  }
+}
+
+/* A coloured neon halo that rises from behind a card on hover or focus. The colour comes from
+   `--neon` (a project's own colour), so every project glows in its own hue. */
+@utility neon {
+  transition:
+    box-shadow var(--duration-panel) var(--ease-state),
+    border-color var(--duration-panel) var(--ease-state),
+    transform 500ms var(--ease-spring);
+  &:hover,
+  &:focus-visible {
+    border-color: color-mix(in srgb, var(--neon) 65%, var(--color-border));
+    box-shadow:
+      0 0 0 1px color-mix(in srgb, var(--neon) 40%, transparent),
+      0 12px 36px -8px color-mix(in srgb, var(--neon) 55%, transparent),
+      0 0 72px -12px color-mix(in srgb, var(--neon) 50%, transparent);
   }
 }
 
