@@ -1,5 +1,6 @@
 "use client";
 
+import { MascotSignals } from "./MascotSignals";
 import * as Dialog from "@radix-ui/react-dialog";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
@@ -253,6 +254,7 @@ export function Shell({ children }: { children: ReactNode }) {
         </div>
       </div>
       <MobileNav />
+      <MascotSignals />
       <PaletteHost />
       <AssistantHost />
       <CreateDialog />

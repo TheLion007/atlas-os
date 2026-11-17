@@ -29,6 +29,7 @@ import {
 } from "../timer/use-timer";
 import { historyHref } from "../lenses/HistoryLens";
 import { hrefKeepingState } from "../shell/nav";
+import { useMascotExpression, useWornOutfit } from "../shell/use-mascot-expression";
 import { useUi } from "../shell/ui-store";
 
 const SPRING = "cubic-bezier(0.34, 1.56, 0.64, 1)";
@@ -123,6 +124,8 @@ export function HomeScreen({ nodes, edges, today }: HomeScreenProps) {
   const timerLeft = useRemaining();
   const timerFrac = useFraction();
   const mood = useFeedback((s) => s.mood);
+  const pip = useMascotExpression();
+  const worn = useWornOutfit();
   const mascot = usePrefs((s) => s.mascot);
   const tracks = usePrefs((s) => s.mascotTracks);
   const mascotOn = usePrefs((s) => s.mascotOn);
@@ -301,7 +304,16 @@ export function HomeScreen({ nodes, edges, today }: HomeScreenProps) {
           aria-hidden="true"
           className="ambient-breathe pointer-events-none absolute -top-10 -left-10 -z-10 size-[260px] rounded-full bg-accent-soft blur-[64px]"
         />
-        {mascotOn && <MascotHero kind={mascot} mood={mood} size={128} track={tracks} />}
+        {mascotOn && (
+          <MascotHero
+            kind={mascot}
+            mood={mood}
+            expression={pip.expression}
+            outfit={worn}
+            size={128}
+            track={tracks}
+          />
+        )}
         <div className="flex min-w-[280px] flex-1 flex-col gap-2">
           <span className="num text-[11px] font-semibold tracking-[0.09em] text-accent-ink uppercase">
             {new Date(`${today}T12:00:00Z`).toLocaleDateString(locale, {

@@ -28,6 +28,7 @@ import { assistantContext, SYSTEM_PROMPT, type OllamaErrorCode } from "@/domain/
 import { useOllamaStore } from "@/lib/ollama-store";
 import { OllamaTutorial } from "../ai/OllamaTutorial";
 import { askOllama, useOllama, warmUpModel, type UseOllama } from "../ai/use-ollama";
+import { useMascotContext } from "@/lib/feedback/mascot-context";
 import { useUi } from "./ui-store";
 
 /** Models already loaded into memory during this session: they are not warmed up twice. */
@@ -75,6 +76,12 @@ function AssistantMain({ ollama, scope }: { ollama: UseOllama; scope: AssistantS
   const [progress2, setProgress2] = useState<{ done: number; total: number } | null>(null);
   const [partial, setPartial] = useState(0);
   const [creating, setCreating] = useState(false);
+  // While the assistant works on an answer, the mascot looks like he is thinking.
+  const working = thinking || reading || creating || asking;
+  useEffect(() => {
+    useMascotContext.getState().setThinking(working);
+    return () => useMascotContext.getState().setThinking(false);
+  }, [working]);
   const queryClient = useQueryClient();
   const mascot = usePrefs((st) => st.mascot);
   const lastBatch = useAssistantUndo((st) => st.batch);

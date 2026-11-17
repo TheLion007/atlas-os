@@ -1,5 +1,6 @@
 "use client";
 
+import { OutfitPicker } from "./OutfitPicker";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
@@ -512,6 +513,7 @@ export function SettingsLens() {
               </button>
             ))}
           </div>
+          <OutfitPicker />
         </Card>
 
         <Card id="ai" title={t("st.ai")} sub={t("st.aiSub")}>

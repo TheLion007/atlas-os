@@ -2,6 +2,13 @@
 
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
+import {
+  seasonKey,
+  seasonOf,
+  type AccessoryId,
+  type Outfit,
+  type Slot,
+} from "@/design/mascot3d/accessories";
 
 export type ThemeChoice = "light" | "dark" | "system";
 export type SoundKind = "click" | "check" | "done" | "create" | "drop" | "error";
@@ -43,9 +50,21 @@ export interface PrefsState {
   mascotTracks: boolean;
   /** Satisfaction points earned by finishing tasks. */
   points: number;
+  /** What Pip wears (3D Pip only): one piece per slot. */
+  outfit: Outfit;
+  /** Tasks finished during a season, per season and year (e.g. "halloween-2026"). */
+  seasonTasks: Record<string, number>;
 
-  set: (patch: Partial<Omit<PrefsState, "set" | "setSound" | "addPoints">>) => void;
+  set: (
+    patch: Partial<
+      Omit<PrefsState, "set" | "setSound" | "addPoints" | "countSeasonTask" | "wear" | "undress">
+    >,
+  ) => void;
   addPoints: (n: number) => void;
+  /** A task was finished: if it is a season, it counts towards that season's pieces. */
+  countSeasonTask: (date?: Date) => void;
+  wear: (id: AccessoryId, slot: Slot) => void;
+  undress: (slot: Slot) => void;
   setSound: (kind: SoundKind, on: boolean) => void;
 }
 
@@ -74,9 +93,24 @@ export const usePrefs = create<PrefsState>()(
       mascot: "pip",
       mascotTracks: true,
       points: 0,
+      outfit: {},
+      seasonTasks: {},
 
       set: (patch) => set(patch),
       addPoints: (n) => set((s) => ({ points: s.points + n })),
+      countSeasonTask: (date = new Date()) => {
+        const season = seasonOf(date);
+        if (!season) return;
+        const key = seasonKey(season, date);
+        set((s) => ({ seasonTasks: { ...s.seasonTasks, [key]: (s.seasonTasks[key] ?? 0) + 1 } }));
+      },
+      wear: (id, slot) => set((s) => ({ outfit: { ...s.outfit, [slot]: id } })),
+      undress: (slot) =>
+        set((s) => {
+          const outfit = { ...s.outfit };
+          delete outfit[slot];
+          return { outfit };
+        }),
       setSound: (kind, on) => set((s) => ({ sounds: { ...s.sounds, [kind]: on } })),
     }),
     {

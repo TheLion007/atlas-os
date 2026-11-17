@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import type { MascotMood } from "@/lib/feedback/celebrate";
 import type { MascotKind } from "@/lib/feedback/prefs";
 import { Mascot } from "../Mascot";
+import type { Outfit } from "./accessories";
 import { expressionForMood, type PipExpression } from "./expressions";
 
 // three.js is a heavy, browser-only chunk: it loads only where a 3D mascot is shown.
@@ -23,6 +24,8 @@ interface MascotHeroProps {
   mood?: MascotMood;
   /** Overrides the mood: any of Pip's nine expressions. */
   expression?: PipExpression;
+  /** What Pip wears. */
+  outfit?: Outfit;
   size?: number;
   track?: boolean;
 }
@@ -35,6 +38,7 @@ export function MascotHero({
   kind = "pip",
   mood = "idle",
   expression,
+  outfit,
   size = 112,
   track = true,
 }: MascotHeroProps) {
@@ -48,5 +52,12 @@ export function MascotHero({
     return <Mascot kind={kind} mood={mood} size={size} track={track} />;
   if (gl === null)
     return <div aria-hidden="true" style={{ width: size, height: size, flex: "none" }} />;
-  return <Pip3D expression={expression ?? expressionForMood(mood)} size={size} track={track} />;
+  return (
+    <Pip3D
+      expression={expression ?? expressionForMood(mood)}
+      outfit={outfit}
+      size={size}
+      track={track}
+    />
+  );
 }

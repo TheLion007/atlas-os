@@ -1,3 +1,4 @@
+import { useMascotContext } from "./mascot-context";
 import { usePrefs, type SoundKind, type SoundProfile } from "./prefs";
 
 /**
@@ -86,6 +87,8 @@ function chain(ctx: AudioContext, cutoff: number): AudioNode {
 
 /** `force` plays even when this kind is switched off (the Settings preview buttons). */
 export function playSound(kind: SoundKind, force = false): void {
+  // Every problem in the app plays this sound, so it is the one place the mascot learns of it.
+  if (kind === "error" && !force) useMascotContext.getState().flagError();
   const prefs = usePrefs.getState();
   if (typeof window === "undefined" || !prefs.soundOn || (!force && !prefs.sounds[kind])) return;
   try {

@@ -1,20 +1,32 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
-import { Mascot } from "@/design/Mascot";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { availableAccessories, levelOf, POINTS_PER_LEVEL } from "@/design/mascot3d/accessories";
+import type { Reason } from "@/design/mascot3d/context";
+import { MascotHero } from "@/design/mascot3d/MascotHero";
 import type { MessageKey } from "@/i18n";
 import { useI18n } from "@/i18n/I18nProvider";
 import { useFeedback } from "@/lib/feedback/celebrate";
 import { usePrefs } from "@/lib/feedback/prefs";
 import { ALL_NAV, isActive } from "./nav";
+import { useMascotExpression, useWornOutfit } from "./use-mascot-expression";
+import { useUi } from "./ui-store";
 
-const SLEEP_AFTER_MS = 90_000;
+/** What the mascot says about what it senses (nothing while you work: it keeps quiet). */
+const CONTEXT_LINE: Partial<Record<Reason, MessageKey>> = {
+  error: "mascot.ctx.error",
+  greeting: "mascot.ctx.greeting",
+  dizzy: "mascot.ctx.dizzy",
+  thinking: "mascot.ctx.thinking",
+  offline: "mascot.ctx.offline",
+};
 
 /**
- * The mascot, living at the foot of the sidebar: it comments on the screen you are on, cheers
- * when something is finished (see `celebrate`), and falls asleep when you leave it alone.
- * Collapsed, it is just the creature, without the speech bubble.
+ * The mascot, living at the foot of the sidebar. It reads the app (see `useMascotExpression`):
+ * it greets you on arrival, sleeps when you are offline or leave it alone, looks worried at an
+ * error, thinks while the assistant does, works while a session runs and cheers when something
+ * is finished. It also wears what you have unlocked. Collapsed, it is just the creature.
  */
 export function MascotDock() {
   const { t } = useI18n();
@@ -23,33 +35,60 @@ export function MascotDock() {
   const kind = usePrefs((s) => s.mascot);
   const tracks = usePrefs((s) => s.mascotTracks);
   const points = usePrefs((s) => s.points);
-  const mood = useFeedback((s) => s.mood);
+  const seasonTasks = usePrefs((s) => s.seasonTasks);
   const say = useFeedback((s) => s.say);
-  const [asleep, setAsleep] = useState(false);
+  const pushToast = useUi((s) => s.pushToast);
+  const { expression, reason } = useMascotExpression();
 
+  const available = useMemo(() => availableAccessories(points, seasonTasks), [points, seasonTasks]);
+  const worn = useWornOutfit();
+
+  // A new piece of clothing was earned: say so, once, never for what was already owned.
+  const [ready, setReady] = useState(() => usePrefs.persist.hasHydrated());
   useEffect(() => {
-    let timer = window.setTimeout(() => setAsleep(true), SLEEP_AFTER_MS);
-    const wake = () => {
-      setAsleep(false);
-      window.clearTimeout(timer);
-      timer = window.setTimeout(() => setAsleep(true), SLEEP_AFTER_MS);
-    };
-    window.addEventListener("pointermove", wake, { passive: true });
-    window.addEventListener("keydown", wake);
-    return () => {
-      window.clearTimeout(timer);
-      window.removeEventListener("pointermove", wake);
-      window.removeEventListener("keydown", wake);
-    };
-  }, []);
+    if (ready) return;
+    return usePrefs.persist.onFinishHydration(() => setReady(true));
+  }, [ready]);
+  const owned = useRef<Set<string> | null>(null);
+  useEffect(() => {
+    if (!ready) return;
+    if (owned.current === null) {
+      owned.current = new Set(available);
+      return;
+    }
+    const fresh = available.filter((id) => !owned.current?.has(id));
+    owned.current = new Set(available);
+    const first = fresh[0];
+    if (first) {
+      pushToast(t("acc.unlocked", { name: t(`acc.${first}` as MessageKey) }));
+      useFeedback.getState().react("cheer", t("acc.unlockedLine"));
+    }
+  }, [available, ready, pushToast, t]);
 
   if (!on) return null;
   const here = ALL_NAV.find((n) => n.ready && isActive(n, pathname));
-  const line = say ?? (asleep ? "…" : here ? t(`mascot.line.${here.id}` as MessageKey) : null);
-  const shown = asleep && mood === "idle" ? "sleep" : mood;
+  const contextual = CONTEXT_LINE[reason];
+  const line =
+    say ??
+    (contextual
+      ? t(contextual)
+      : reason === "idle-sleep"
+        ? "…"
+        : here
+          ? t(`mascot.line.${here.id}` as MessageKey)
+          : null);
+  // The flat mascots (and the 3D one where WebGL is missing) only know four moods.
+  const mood =
+    expression === "sleeping"
+      ? "sleep"
+      : expression === "dancing"
+        ? "cheer"
+        : expression === "happy"
+          ? "happy"
+          : "idle";
 
-  const level = Math.floor(points / 200) + 1;
-  const pct = ((points % 200) / 200) * 100;
+  const level = levelOf(points);
+  const pct = ((points % POINTS_PER_LEVEL) / POINTS_PER_LEVEL) * 100;
 
   return (
     <div className="flex flex-col gap-3">
@@ -67,7 +106,14 @@ export function MascotDock() {
         </p>
       )}
       <div className="flex items-end gap-3 px-1">
-        <Mascot kind={kind} mood={shown} size={58} track={tracks} />
+        <MascotHero
+          kind={kind}
+          mood={mood}
+          expression={expression}
+          outfit={worn}
+          size={72}
+          track={tracks}
+        />
         <div className="flex flex-1 flex-col gap-[6px] pb-[6px]">
           <div className="flex items-baseline justify-between">
             <span className="font-display text-[15px] font-bold">

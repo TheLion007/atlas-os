@@ -38,6 +38,7 @@ export function useTaskStatus() {
             const late = task.due !== null && task.due < today;
             celebrate(at);
             usePrefs.getState().addPoints(POINTS + (late ? LATE_BONUS : 0));
+            usePrefs.getState().countSeasonTask();
             pushToast(
               t("home.done", { title: task.title }),
               undefined,

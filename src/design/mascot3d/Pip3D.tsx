@@ -11,7 +11,9 @@ import {
   type Group,
   type Mesh,
 } from "three";
+import type { Outfit } from "./accessories";
 import { EXPRESSIONS, PIP, type PipExpression } from "./expressions";
+import { Outfit3D } from "./Outfit3D";
 
 interface Look {
   x: number;
@@ -271,10 +273,12 @@ function PipModel({
   expression,
   track,
   calm,
+  outfit,
 }: {
   expression: PipExpression;
   track: boolean;
   calm: boolean;
+  outfit: Outfit;
 }) {
   const spec = EXPRESSIONS[expression];
   const gl = useThree((s) => s.gl);
@@ -401,7 +405,8 @@ function PipModel({
             <meshBasicMaterial color={PIP.cheek} transparent opacity={0.6 * spec.cheeks} />
           </mesh>
         ))}
-        <group ref={crest} position={[0, 0.86, 0]}>
+        <Outfit3D outfit={outfit} />
+        <group ref={crest} position={[0, 0.86, 0]} visible={!outfit.hat}>
           <mesh position={[0, 0.28, 0]} scale={[1, 1, 0.55]}>
             <coneGeometry args={[0.19, 0.62, 4]} />
             <meshPhysicalMaterial color={PIP.crest} roughness={0.45} clearcoat={0.3} />
@@ -433,6 +438,8 @@ function PipModel({
 
 export interface Pip3DProps {
   expression?: PipExpression;
+  /** What Pip wears (hat, glasses, cape). */
+  outfit?: Outfit;
   size?: number;
   /** Pupils and head follow the pointer. */
   track?: boolean;
@@ -440,7 +447,13 @@ export interface Pip3DProps {
 }
 
 /** Pip as a real little 3D creature: lit, squashy, expressive, built from plain shapes in code. */
-export function Pip3D({ expression = "idle", size = 128, track = true, className }: Pip3DProps) {
+export function Pip3D({
+  expression = "idle",
+  outfit = {},
+  size = 128,
+  track = true,
+  className,
+}: Pip3DProps) {
   const calm = useMemo(
     () =>
       typeof window !== "undefined" &&
@@ -469,7 +482,7 @@ export function Pip3D({ expression = "idle", size = 128, track = true, className
         <ambientLight intensity={1.9} />
         <directionalLight position={[2.5, 3.5, 5]} intensity={1.5} />
         <directionalLight position={[-3, 1, 2]} intensity={0.45} color="#FFE9C9" />
-        <PipModel expression={expression} track={track} calm={calm} />
+        <PipModel expression={expression} track={track} calm={calm} outfit={outfit} />
       </Canvas>
     </div>
   );
