@@ -516,6 +516,26 @@ export interface Pip3DProps {
   className?: string;
 }
 
+/** The mascot is drawn at most this many times a second: it is a small figure, not a game. */
+export const MASCOT_FPS = 30;
+
+/**
+ * Drives the canvas, which only draws on demand: one frame every 1/MASCOT_FPS second, and at once
+ * whenever what is shown changes (expression, outfit, creature), so reactions stay immediate.
+ */
+function FrameLimiter({ active, redraw }: { active: boolean; redraw: string }) {
+  const invalidate = useThree((s) => s.invalidate);
+  useEffect(() => {
+    invalidate();
+  }, [invalidate, redraw]);
+  useEffect(() => {
+    if (!active) return;
+    const id = window.setInterval(() => invalidate(), 1000 / MASCOT_FPS);
+    return () => window.clearInterval(id);
+  }, [active, invalidate]);
+  return null;
+}
+
 /** Pip as a real little 3D creature: lit, squashy, expressive, built from plain shapes in code. */
 export function Pip3D({
   kind = "pip",
@@ -540,7 +560,7 @@ export function Pip3D({
     >
       <Canvas
         dpr={[1, 2]}
-        frameloop={calm ? "demand" : "always"}
+        frameloop="demand"
         camera={{ position: [0, 0.15, 6.4], fov: 30 }}
         gl={{
           alpha: true,
@@ -550,6 +570,7 @@ export function Pip3D({
         }}
         style={{ background: "transparent" }}
       >
+        <FrameLimiter active={!calm} redraw={`${kind}|${expression}|${JSON.stringify(outfit)}`} />
         <ambientLight intensity={1.9} />
         <directionalLight position={[2.5, 3.5, 5]} intensity={1.5} />
         <directionalLight position={[-3, 1, 2]} intensity={0.45} color="#FFE9C9" />
