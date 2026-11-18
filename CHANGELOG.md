@@ -3,6 +3,24 @@
 Versions are listed newest first. Each entry is in English, then in French.
 Les versions sont listées de la plus récente à la plus ancienne. Chaque entrée est en anglais, puis en français.
 
+## 1.2.0 — 2026-11-19 — 3D assistants / Assistants en 3D
+
+### English
+
+- **Pip, Moka and Fil, your three assistants, are now 3D characters everywhere in the app.**
+- They react to what is going on: they fall asleep when you are offline or inactive, wave when you arrive and when you come back, react to errors, and look like they are thinking while the assistant works.
+- While the timer runs, they type on a laptop above the timer.
+- Outfits unlock as you level up (beanie, glasses, party hat, bow, sunglasses, crown); you choose them in Settings.
+- Project cards get a neon halo on hover, in the project's colour.
+
+### Français
+
+- **Pip, Moka et Fil, tes trois assistants, sont maintenant des personnages 3D partout dans l'app.**
+- Ils réagissent à ce qui se passe : ils dorment quand tu es hors ligne ou inactif, font coucou à ton arrivée et à ton retour, réagissent aux erreurs, et prennent l'air de réfléchir quand l'assistant travaille.
+- Quand le minuteur tourne, ils tapent sur un ordinateur portable au-dessus du minuteur.
+- Des tenues se débloquent avec les niveaux (bonnet, lunettes, chapeau de fête, nœud, lunettes de soleil, couronne) ; tu les choisis dans Réglages.
+- Les cartes de projet ont un halo néon au survol, dans la couleur du projet.
+
 ## 1.1.2 — 2026-11-11 — Contextual assistant / Assistant contextuel
 
 ### English

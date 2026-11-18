@@ -5,11 +5,11 @@ import { useGraph, useProgress } from "@/client/hooks";
 import { useSource } from "@/client/provider";
 import { focusMinutes, formatFocus, monthCells, monthLevel } from "@/domain/focus";
 import { breakMinutes, MAX_MINUTES, MIN_MINUTES, PRESETS } from "@/domain/timer";
-import { Mascot } from "@/design/Mascot";
+import { MascotHero } from "@/design/mascot3d/MascotHero";
+import { useMascotExpression, useWornOutfit } from "@/components/shell/use-mascot-expression";
 import { projectColor } from "@/design/palette";
 import { useI18n } from "@/i18n/I18nProvider";
 import { cn } from "@/lib/cn";
-import { useFeedback } from "@/lib/feedback/celebrate";
 import { usePrefs } from "@/lib/feedback/prefs";
 import { playSound } from "@/lib/feedback/sound";
 import { useTimer } from "@/lib/timer-store";
@@ -50,7 +50,8 @@ export function TimerLens() {
   const frac = useFraction();
   const kind = usePrefs((s) => s.mascot);
   const tracks = usePrefs((s) => s.mascotTracks);
-  const mood = useFeedback((s) => s.mood);
+  const pip = useMascotExpression();
+  const worn = useWornOutfit();
   const today = source?.today() ?? localDay();
   const day = localDay();
   const onBreak = timer.mode === "break";
@@ -111,9 +112,15 @@ export function TimerLens() {
         aria-label={t("nav.timer")}
         className="flex min-w-[320px] flex-[1_1_480px] flex-col items-center gap-5 rounded-[26px] border border-border bg-surface p-7 shadow-card"
       >
-        <div className="flex w-full items-center gap-3">
-          <Mascot kind={kind} mood={mood} size={46} track={tracks} />
-          <p className="rounded-[14px] bg-sunk px-[14px] py-[10px] text-[13px] leading-[1.45] text-fg-muted">
+        <div className="flex w-full flex-col items-center gap-1">
+          <MascotHero
+            kind={kind}
+            expression={onBreak ? (timer.running ? "happy" : "idle") : pip.expression}
+            outfit={worn}
+            size={170}
+            track={tracks}
+          />
+          <p className="rounded-[14px] bg-sunk px-[14px] py-[10px] text-center text-[13px] leading-[1.45] text-fg-muted">
             {say}
           </p>
         </div>

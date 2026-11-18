@@ -5,7 +5,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { describeWriteError, useCreateObject, useGraph, useProgress } from "@/client/hooks";
 import { applyProposal, undoBatch } from "@/client/assistant-apply";
 import { useSource } from "@/client/provider";
-import { Mascot } from "@/design/Mascot";
+import { MascotHero } from "@/design/mascot3d/MascotHero";
 import {
   buildWorkspace,
   scopeSentence,
@@ -28,6 +28,7 @@ import { assistantContext, SYSTEM_PROMPT, type OllamaErrorCode } from "@/domain/
 import { useOllamaStore } from "@/lib/ollama-store";
 import { OllamaTutorial } from "../ai/OllamaTutorial";
 import { askOllama, useOllama, warmUpModel, type UseOllama } from "../ai/use-ollama";
+import { useMascotContext } from "@/lib/feedback/mascot-context";
 import { useUi } from "./ui-store";
 
 /** Models already loaded into memory during this session: they are not warmed up twice. */
@@ -75,6 +76,12 @@ function AssistantMain({ ollama, scope }: { ollama: UseOllama; scope: AssistantS
   const [progress2, setProgress2] = useState<{ done: number; total: number } | null>(null);
   const [partial, setPartial] = useState(0);
   const [creating, setCreating] = useState(false);
+  // While the assistant works on an answer, the mascot looks like he is thinking.
+  const working = thinking || reading || creating || asking;
+  useEffect(() => {
+    useMascotContext.getState().setThinking(working);
+    return () => useMascotContext.getState().setThinking(false);
+  }, [working]);
   const queryClient = useQueryClient();
   const mascot = usePrefs((st) => st.mascot);
   const lastBatch = useAssistantUndo((st) => st.batch);
@@ -171,7 +178,8 @@ function AssistantMain({ ollama, scope }: { ollama: UseOllama; scope: AssistantS
     setAiError(null);
     setPartial(0);
     setReading(true);
-    react("happy", null);
+    // Not "happy": that would hide the thinking face for the first moments of the answer.
+    react("idle", null);
     const ws = active ? scopeWorkspace(active, nodes, edges) : buildWorkspace(nodes, edges);
     const ctl = new AbortController();
     abort.current = ctl;
@@ -366,7 +374,7 @@ function AssistantMain({ ollama, scope }: { ollama: UseOllama; scope: AssistantS
     setAiError(null);
     setErrorFrom("ask");
     setAsking(true);
-    react("happy", null);
+    react("idle", null);
     const ctl = new AbortController();
     abort.current = ctl;
     const model = ollama.model;
@@ -510,7 +518,7 @@ function AssistantMain({ ollama, scope }: { ollama: UseOllama; scope: AssistantS
             role="status"
             className="pop-in mt-4 flex items-center gap-3 rounded-[14px] border border-border bg-surface px-4 py-3 text-[13px] shadow-card"
           >
-            <Mascot kind={mascot} mood="idle" size={44} track={false} />
+            <MascotHero kind={mascot} expression="thinking" size={56} track={false} />
             <span className="flex min-w-0 flex-1 flex-col gap-[2px]">
               <span className="text-fg-muted">
                 {loading ? t("ai.struct.firstLoad") : t("ai.struct.thinking")}

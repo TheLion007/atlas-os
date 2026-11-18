@@ -2,9 +2,10 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { useProgress } from "@/client/hooks";
-import { Mascot } from "@/design/Mascot";
+import { MascotHero } from "@/design/mascot3d/MascotHero";
+import { spotlightMove } from "@/lib/use-spotlight";
 import { projectColor } from "@/design/palette";
 import type { ApiEdge, ApiObject } from "@/domain/api-types";
 import { diffDays } from "@/domain/dates";
@@ -28,10 +29,10 @@ import {
 } from "../timer/use-timer";
 import { historyHref } from "../lenses/HistoryLens";
 import { hrefKeepingState } from "../shell/nav";
+import { useMascotExpression, useWornOutfit } from "../shell/use-mascot-expression";
 import { useUi } from "../shell/ui-store";
 
 const SPRING = "cubic-bezier(0.34, 1.56, 0.64, 1)";
-const tint = (hex: string, pct: number) => `color-mix(in srgb, ${hex} ${pct}%, transparent)`;
 
 const due = (n: ApiObject): string | null => {
   const v = n.details?.due ?? n.details?.date;
@@ -79,10 +80,13 @@ function Kpi({
   const counted = useCountUp(typeof value === "number" ? value : 0);
   const shown = typeof value === "number" ? counted : value;
   return (
-    <div className="-mr-px flex flex-col gap-2 border-r border-border px-[22px] py-[18px]">
+    <div
+      onPointerMove={spotlightMove}
+      className="spotlight -mr-px flex flex-col gap-2 border-r border-border px-[22px] py-[18px]"
+    >
       <span className="text-[12.5px] text-fg-muted">{label}</span>
-      <div className="flex items-baseline gap-2">
-        <span className="font-display text-[32px] leading-none font-bold tracking-[-0.03em]">
+      <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+        <span className="font-display text-[32px] leading-none font-bold tracking-[-0.03em] whitespace-nowrap">
           {shown}
           {suffix}
         </span>
@@ -120,6 +124,8 @@ export function HomeScreen({ nodes, edges, today }: HomeScreenProps) {
   const timerLeft = useRemaining();
   const timerFrac = useFraction();
   const mood = useFeedback((s) => s.mood);
+  const pip = useMascotExpression();
+  const worn = useWornOutfit();
   const mascot = usePrefs((s) => s.mascot);
   const tracks = usePrefs((s) => s.mascotTracks);
   const mascotOn = usePrefs((s) => s.mascotOn);
@@ -293,8 +299,21 @@ export function HomeScreen({ nodes, edges, today }: HomeScreenProps) {
   return (
     <div className="mx-auto -my-4 flex max-w-[1300px] flex-col gap-[26px] px-4 pt-[30px] pb-[60px] md:-my-6 md:px-9">
       {/* Greeting, mascot and quick actions */}
-      <div className="flex flex-wrap items-center gap-[26px]">
-        {mascotOn && <Mascot kind={mascot} mood={mood} size={104} track={tracks} />}
+      <div className="relative flex flex-wrap items-center gap-[26px]">
+        <div
+          aria-hidden="true"
+          className="ambient-breathe pointer-events-none absolute -top-10 -left-10 -z-10 size-[260px] rounded-full bg-accent-soft blur-[64px]"
+        />
+        {mascotOn && (
+          <MascotHero
+            kind={mascot}
+            mood={mood}
+            expression={pip.expression}
+            outfit={worn}
+            size={128}
+            track={tracks}
+          />
+        )}
         <div className="flex min-w-[280px] flex-1 flex-col gap-2">
           <span className="num text-[11px] font-semibold tracking-[0.09em] text-accent-ink uppercase">
             {new Date(`${today}T12:00:00Z`).toLocaleDateString(locale, {
@@ -316,7 +335,8 @@ export function HomeScreen({ nodes, edges, today }: HomeScreenProps) {
               key={a.id}
               type="button"
               onClick={a.run}
-              className="flex items-center gap-[10px] rounded-[13px] border border-border bg-surface px-3 py-[11px] text-left shadow-card transition-[transform,box-shadow,border-color] duration-[400ms] ease-(--ease-spring) hover:-translate-y-[3px] hover:border-border-strong hover:shadow-pop active:scale-[0.96]"
+              onPointerMove={spotlightMove}
+              className="spotlight flex items-center gap-[10px] overflow-hidden rounded-[13px] border border-border bg-surface px-3 py-[11px] text-left shadow-card transition-[transform,box-shadow,border-color] duration-[400ms] ease-(--ease-spring) hover:-translate-y-[3px] hover:border-border-strong hover:shadow-pop active:scale-[0.96]"
             >
               <span
                 className="grid size-[30px] flex-none place-items-center rounded-[9px]"
@@ -701,18 +721,12 @@ function HomeProjectCard({
   return (
     <Link
       href={href}
-      className="relative flex h-full flex-col gap-[14px] overflow-hidden rounded-[18px] border border-border bg-surface p-[18px] text-left shadow-card transition-[transform,box-shadow,border-color] duration-500 ease-(--ease-spring) hover:-translate-y-[5px] hover:-rotate-[0.5deg] hover:border-border-strong hover:shadow-pop active:scale-[0.98]"
+      onPointerMove={spotlightMove}
+      style={{ "--neon": hex } as CSSProperties}
+      className="spotlight neon flex h-full flex-col gap-[14px] overflow-hidden rounded-[18px] border border-border bg-surface p-[18px] text-left shadow-card hover:-translate-y-[5px] hover:-rotate-[0.5deg] active:scale-[0.98]"
     >
-      <div
-        aria-hidden="true"
-        className="absolute -top-[34px] -right-[34px] size-[104px] rounded-full"
-        style={{ background: tint(hex, 14) }}
-      />
       <div className="relative flex items-center justify-between">
-        <span className="num flex items-center gap-[7px] text-[11px] text-fg-muted">
-          <i className="size-[9px] rounded-[3px]" style={{ background: hex }} />
-          {kind}
-        </span>
+        <span className="num flex items-center gap-[7px] text-[11px] text-fg-muted">{kind}</span>
         <span className="text-[11.5px] font-semibold text-fg-muted">
           {t(
             `hm.status.${card.status === "dropped" ? "draft" : card.status}` as "hm.status.active",

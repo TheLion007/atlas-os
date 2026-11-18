@@ -8,6 +8,7 @@ import { graph } from "./graph";
 import { hist } from "./hist";
 import { hm } from "./hm";
 import { map } from "./map";
+import { mascot } from "./mascot";
 import { memory } from "./memory";
 import { notes } from "./notes";
 import { proj } from "./proj";
@@ -58,6 +59,7 @@ export const en = {
   ...up.en,
   ...rm.en,
   ...md.en,
+  ...mascot.en,
 };
 export const fr = {
   ...common.fr,
@@ -82,6 +84,7 @@ export const fr = {
   ...up.fr,
   ...rm.fr,
   ...md.fr,
+  ...mascot.fr,
 };
 
 export type MessageKey = keyof typeof en;
