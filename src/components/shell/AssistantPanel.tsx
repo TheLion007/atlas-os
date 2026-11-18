@@ -178,7 +178,8 @@ function AssistantMain({ ollama, scope }: { ollama: UseOllama; scope: AssistantS
     setAiError(null);
     setPartial(0);
     setReading(true);
-    react("happy", null);
+    // Not "happy": that would hide the thinking face for the first moments of the answer.
+    react("idle", null);
     const ws = active ? scopeWorkspace(active, nodes, edges) : buildWorkspace(nodes, edges);
     const ctl = new AbortController();
     abort.current = ctl;
@@ -373,7 +374,7 @@ function AssistantMain({ ollama, scope }: { ollama: UseOllama; scope: AssistantS
     setAiError(null);
     setErrorFrom("ask");
     setAsking(true);
-    react("happy", null);
+    react("idle", null);
     const ctl = new AbortController();
     abort.current = ctl;
     const model = ollama.model;
