@@ -11,7 +11,6 @@ export const mascot = area(
     "acc.title": "Outfit",
     "acc.sub": "Earn pieces by levelling up, and by finishing tasks during the seasons.",
     "acc.none": "Nothing",
-    "acc.pipOnly": "Outfits are shown on Pip for now.",
     "acc.slot.hat": "Head",
     "acc.slot.face": "Face",
     "acc.slot.back": "Back",
@@ -40,7 +39,6 @@ export const mascot = area(
     "acc.sub":
       "Gagne des pièces en montant de niveau, et en finissant tes tâches pendant les saisons.",
     "acc.none": "Rien",
-    "acc.pipOnly": "Les tenues s’affichent sur Pip pour l’instant.",
     "acc.slot.hat": "Tête",
     "acc.slot.face": "Visage",
     "acc.slot.back": "Dos",

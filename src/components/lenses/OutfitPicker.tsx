@@ -24,7 +24,7 @@ function requirement(a: Accessory, t: (k: MessageKey, p?: Record<string, number>
     : t(u.season === "halloween" ? "acc.lock.halloween" : "acc.lock.winter", { n: u.tasks });
 }
 
-/** Pip's wardrobe: a preview, and for each place on him the pieces earned and still to earn. */
+/** The wardrobe of whichever creature you picked: a preview, and for each place on him the pieces earned and still to earn. */
 export function OutfitPicker() {
   const { t } = useI18n();
   const mascot = usePrefs((s) => s.mascot);
@@ -41,12 +41,7 @@ export function OutfitPicker() {
   return (
     <section aria-label={t("acc.title")} className="mt-5 flex flex-wrap items-start gap-5">
       <div className="flex flex-col items-center gap-1">
-        <MascotHero kind="pip" expression="greeting" outfit={worn} size={140} track={tracks} />
-        {mascot !== "pip" && (
-          <p className="max-w-[160px] text-center text-[11.5px] text-fg-subtle">
-            {t("acc.pipOnly")}
-          </p>
-        )}
+        <MascotHero kind={mascot} expression="greeting" outfit={worn} size={140} track={tracks} />
       </div>
       <div className="flex min-w-[260px] flex-1 flex-col gap-4">
         <div>

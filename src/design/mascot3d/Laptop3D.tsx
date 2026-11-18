@@ -3,7 +3,7 @@
 import { useFrame } from "@react-three/fiber";
 import { useRef } from "react";
 import type { Group } from "three";
-import { PIP } from "./expressions";
+import { CHARACTER, useKind } from "./character";
 
 const L = {
   shell: "#C9CED6",
@@ -15,6 +15,7 @@ const L = {
 /** One hand resting on the keyboard that taps in time with the other. */
 function TypingHand({ x, phase }: { x: number; phase: number }) {
   const hand = useRef<Group>(null);
+  const c = CHARACTER[useKind()];
   useFrame((s) => {
     const h = hand.current;
     if (!h) return;
@@ -26,7 +27,7 @@ function TypingHand({ x, phase }: { x: number; phase: number }) {
     <group ref={hand} position={[x, -0.74, 1.08]}>
       <mesh scale={[1, 0.9, 1]}>
         <sphereGeometry args={[0.15, 20, 16]} />
-        <meshPhysicalMaterial color={PIP.body} roughness={0.5} clearcoat={0.25} />
+        <meshPhysicalMaterial color={c.body} roughness={0.5} clearcoat={0.25} />
       </mesh>
     </group>
   );

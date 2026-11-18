@@ -11,7 +11,9 @@ import {
   type Group,
   type Mesh,
 } from "three";
+import type { MascotKind } from "@/lib/feedback/prefs";
 import type { Outfit } from "./accessories";
+import { CHARACTER, KindProvider, useKind } from "./character";
 import { EXPRESSIONS, PIP, type PipExpression } from "./expressions";
 import { Laptop3D } from "./Laptop3D";
 import { Outfit3D } from "./Outfit3D";
@@ -197,11 +199,12 @@ function Mouth({ style }: { style: string }) {
 }
 
 function Hand({ side, pivot }: { side: 1 | -1; pivot: React.RefObject<Group | null> }) {
+  const c = CHARACTER[useKind()];
   return (
     <group ref={pivot} position={[side * 1.0, -0.12, 0.2]} scale={[side, 1, 1]}>
       <mesh position={[0.27, -0.19, 0.06]} scale={[1, 1.15, 0.9]}>
         <sphereGeometry args={[0.16, 20, 16]} />
-        <meshPhysicalMaterial color={PIP.body} roughness={0.5} clearcoat={0.25} />
+        <meshPhysicalMaterial color={c.body} roughness={0.5} clearcoat={0.25} />
       </mesh>
     </group>
   );
@@ -270,6 +273,60 @@ function Sweat() {
   );
 }
 
+/** Moka's cat ears; they stay out under any hat. */
+function MokaEars({ crest }: { crest: React.RefObject<Group | null> }) {
+  const c = CHARACTER.moka;
+  return (
+    <group ref={crest}>
+      {[-1, 1].map((s) => (
+        <mesh
+          key={s}
+          position={[s * 0.66, 0.78, 0]}
+          rotation={[0, 0, -s * 0.38]}
+          scale={[1, 1, 0.6]}
+        >
+          <coneGeometry args={[0.34, 0.72, 4]} />
+          <meshPhysicalMaterial color={c.accent} roughness={0.5} clearcoat={0.2} />
+        </mesh>
+      ))}
+    </group>
+  );
+}
+
+/** Moka's little amber nose. */
+function MokaFace() {
+  return (
+    <mesh position={[0, -0.01, 0.97]} rotation={[0, 0, Math.PI]} scale={[1, 0.8, 0.5]}>
+      <coneGeometry args={[0.09, 0.11, 3]} />
+      <meshStandardMaterial color={CHARACTER.moka.accentDark} roughness={0.4} />
+    </mesh>
+  );
+}
+
+/** Fil's sprout: a stem and two leaves that sway. */
+function Sprout({ crest, hidden }: { crest: React.RefObject<Group | null>; hidden: boolean }) {
+  const c = CHARACTER.fil;
+  return (
+    <group ref={crest} position={[0, 0.9, 0]} visible={!hidden}>
+      <mesh position={[0, 0.18, 0]}>
+        <cylinderGeometry args={[0.04, 0.05, 0.4, 10]} />
+        <meshStandardMaterial color={c.accentDark} roughness={0.6} />
+      </mesh>
+      {[-1, 1].map((s) => (
+        <mesh
+          key={s}
+          position={[s * 0.24, 0.42, 0]}
+          rotation={[0, 0, -s * 0.5]}
+          scale={[1, 0.38, 0.5]}
+        >
+          <sphereGeometry args={[0.3, 20, 14]} />
+          <meshPhysicalMaterial color={c.accent} roughness={0.5} clearcoat={0.2} />
+        </mesh>
+      ))}
+    </group>
+  );
+}
+
 function PipModel({
   expression,
   track,
@@ -282,6 +339,8 @@ function PipModel({
   outfit: Outfit;
 }) {
   const spec = EXPRESSIONS[expression];
+  const kind = useKind();
+  const c = CHARACTER[kind];
   const gl = useThree((s) => s.gl);
   const invalidate = useThree((s) => s.invalidate);
   const root = useRef<Group>(null);
@@ -380,19 +439,20 @@ function PipModel({
   return (
     <group ref={root} position={[0, -0.1, 0]}>
       <group ref={body}>
-        <mesh scale={[1.1, 0.98, 0.95]}>
+        <mesh scale={c.shape}>
           <sphereGeometry args={[1, 56, 40]} />
           <meshPhysicalMaterial
-            color={PIP.body}
+            color={c.body}
             roughness={0.5}
             clearcoat={0.3}
             clearcoatRoughness={0.5}
           />
         </mesh>
-        <mesh position={[0, -0.42, 0.74]} scale={[0.62, 0.42, 0.22]}>
+        <mesh position={[0, c.patch.y, 0.74]} scale={c.patch.scale}>
           <sphereGeometry args={[1, 40, 28]} />
-          <meshPhysicalMaterial color={PIP.belly} roughness={0.55} />
+          <meshPhysicalMaterial color={c.belly} roughness={0.55} />
         </mesh>
+        {kind === "moka" && <MokaFace />}
         <Eyes style={spec.eyes} look={look} />
         <Mouth style={spec.mouth} />
         {[-1, 1].map((s) => (
@@ -407,16 +467,20 @@ function PipModel({
           </mesh>
         ))}
         <Outfit3D outfit={outfit} />
-        <group ref={crest} position={[0, 0.86, 0]} visible={!outfit.hat}>
-          <mesh position={[0, 0.28, 0]} scale={[1, 1, 0.55]}>
-            <coneGeometry args={[0.19, 0.62, 4]} />
-            <meshPhysicalMaterial color={PIP.crest} roughness={0.45} clearcoat={0.3} />
-          </mesh>
-          <mesh position={[0, 0.16, 0.07]}>
-            <sphereGeometry args={[0.06, 12, 8]} />
-            <Ink />
-          </mesh>
-        </group>
+        {kind === "moka" && <MokaEars crest={crest} />}
+        {kind === "pip" && (
+          <group ref={crest} position={[0, 0.86, 0]} visible={!outfit.hat}>
+            <mesh position={[0, 0.28, 0]} scale={[1, 1, 0.55]}>
+              <coneGeometry args={[0.19, 0.62, 4]} />
+              <meshPhysicalMaterial color={c.accent} roughness={0.45} clearcoat={0.3} />
+            </mesh>
+            <mesh position={[0, 0.16, 0.07]}>
+              <sphereGeometry args={[0.06, 12, 8]} />
+              <Ink />
+            </mesh>
+          </group>
+        )}
+        {kind === "fil" && <Sprout crest={crest} hidden={!!outfit.hat} />}
         <group visible={expression !== "working"}>
           <Hand side={1} pivot={armR} />
           <Hand side={-1} pivot={armL} />
@@ -441,6 +505,8 @@ function PipModel({
 }
 
 export interface Pip3DProps {
+  /** Which creature: Pip by default, or Moka or Fil. */
+  kind?: MascotKind;
   expression?: PipExpression;
   /** What Pip wears (hat, glasses, cape). */
   outfit?: Outfit;
@@ -452,6 +518,7 @@ export interface Pip3DProps {
 
 /** Pip as a real little 3D creature: lit, squashy, expressive, built from plain shapes in code. */
 export function Pip3D({
+  kind = "pip",
   expression = "idle",
   outfit = {},
   size = 128,
@@ -486,7 +553,9 @@ export function Pip3D({
         <ambientLight intensity={1.9} />
         <directionalLight position={[2.5, 3.5, 5]} intensity={1.5} />
         <directionalLight position={[-3, 1, 2]} intensity={0.45} color="#FFE9C9" />
-        <PipModel expression={expression} track={track} calm={calm} outfit={outfit} />
+        <KindProvider value={kind}>
+          <PipModel expression={expression} track={track} calm={calm} outfit={outfit} />
+        </KindProvider>
       </Canvas>
     </div>
   );

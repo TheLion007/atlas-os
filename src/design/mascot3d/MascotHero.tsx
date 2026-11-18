@@ -31,7 +31,7 @@ interface MascotHeroProps {
 }
 
 /**
- * The big mascot: Pip in 3D wherever the machine can draw it, the flat Pip (and Moka and Fil)
+ * The big mascot: Pip, Moka or Fil in 3D wherever the machine can draw it, the flat one
  * everywhere else. It never leaves a hole: the flat one stands in while the 3D one loads.
  */
 export function MascotHero({
@@ -48,12 +48,12 @@ export function MascotHero({
     return () => cancelAnimationFrame(id);
   }, []);
 
-  if (kind !== "pip" || gl === false)
-    return <Mascot kind={kind} mood={mood} size={size} track={track} />;
+  if (gl === false) return <Mascot kind={kind} mood={mood} size={size} track={track} />;
   if (gl === null)
     return <div aria-hidden="true" style={{ width: size, height: size, flex: "none" }} />;
   return (
     <Pip3D
+      kind={kind}
       expression={expression ?? expressionForMood(mood)}
       outfit={outfit}
       size={size}
