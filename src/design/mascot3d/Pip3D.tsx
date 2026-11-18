@@ -1,6 +1,6 @@
 "use client";
 
-import { Canvas, useFrame, useThree } from "@react-three/fiber";
+import { Canvas, events as pointerEvents, useFrame, useThree } from "@react-three/fiber";
 import { useEffect, useMemo, useRef } from "react";
 import {
   CatmullRomCurve3,
@@ -516,6 +516,25 @@ export interface Pip3DProps {
   className?: string;
 }
 
+type EventStore = Parameters<typeof pointerEvents>[0];
+
+/**
+ * The canvas connects its events once the scene is created, which happens asynchronously. If the
+ * mascot was removed meanwhile (a quick screen change, a remount) the element is gone and the
+ * library throws "Cannot read properties of null (reading 'addEventListener')". Nothing to
+ * connect to means nothing to do.
+ */
+function safeEvents(store: EventStore): ReturnType<typeof pointerEvents> {
+  const manager = pointerEvents(store);
+  const connect = manager.connect;
+  return {
+    ...manager,
+    connect: (target: HTMLElement) => {
+      if (target) connect?.(target);
+    },
+  };
+}
+
 /** The mascot is drawn at most this many times a second: it is a small figure, not a game. */
 export const MASCOT_FPS = 30;
 
@@ -560,6 +579,7 @@ export function Pip3D({
     >
       <Canvas
         dpr={[1, 2]}
+        events={safeEvents}
         frameloop="demand"
         camera={{ position: [0, 0.15, 6.4], fov: 30 }}
         gl={{
