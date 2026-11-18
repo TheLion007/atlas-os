@@ -5,7 +5,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { describeWriteError, useCreateObject, useGraph, useProgress } from "@/client/hooks";
 import { applyProposal, undoBatch } from "@/client/assistant-apply";
 import { useSource } from "@/client/provider";
-import { Mascot } from "@/design/Mascot";
+import { MascotHero } from "@/design/mascot3d/MascotHero";
 import {
   buildWorkspace,
   scopeSentence,
@@ -517,7 +517,7 @@ function AssistantMain({ ollama, scope }: { ollama: UseOllama; scope: AssistantS
             role="status"
             className="pop-in mt-4 flex items-center gap-3 rounded-[14px] border border-border bg-surface px-4 py-3 text-[13px] shadow-card"
           >
-            <Mascot kind={mascot} mood="idle" size={44} track={false} />
+            <MascotHero kind={mascot} expression="thinking" size={56} track={false} />
             <span className="flex min-w-0 flex-1 flex-col gap-[2px]">
               <span className="text-fg-muted">
                 {loading ? t("ai.struct.firstLoad") : t("ai.struct.thinking")}

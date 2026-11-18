@@ -3,9 +3,9 @@
 import * as Dialog from "@radix-ui/react-dialog";
 import { useState, type FormEvent } from "react";
 import { useI18n } from "@/i18n/I18nProvider";
-import { Mascot } from "@/design/Mascot";
+import { MascotHero } from "@/design/mascot3d/MascotHero";
+import { useMascotExpression, useWornOutfit } from "@/components/shell/use-mascot-expression";
 import { cn } from "@/lib/cn";
-import { useFeedback } from "@/lib/feedback/celebrate";
 import { usePrefs } from "@/lib/feedback/prefs";
 import { Icon } from "../ui/Icon";
 import { ObjectChip, type ChipObject } from "../ui/ObjectChip";
@@ -162,7 +162,8 @@ interface AssistantSheetProps {
 export function AssistantSheet({ open, onOpenChange, children }: AssistantSheetProps) {
   const { t } = useI18n();
   const kind = usePrefs((s) => s.mascot);
-  const stored = useFeedback((s) => s.mood);
+  const pip = useMascotExpression();
+  const worn = useWornOutfit();
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
       <Dialog.Portal>
@@ -175,10 +176,11 @@ export function AssistantSheet({ open, onOpenChange, children }: AssistantSheetP
           className="sheet-right fixed inset-y-0 right-0 z-50 flex w-full max-w-[440px] flex-col border-l border-border-strong bg-bg shadow-pop focus:outline-none"
         >
           <div className="flex shrink-0 items-center gap-3 px-5 pt-5">
-            <Mascot
+            <MascotHero
               kind={kind}
-              mood={stored === "sleep" ? "idle" : stored}
-              size={44}
+              expression={pip.expression === "sleeping" ? "idle" : pip.expression}
+              outfit={worn}
+              size={56}
               track={false}
             />
             <div className="min-w-0 flex-1">

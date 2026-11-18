@@ -23,7 +23,8 @@ import {
   type BlockType,
   type NoteBlock,
 } from "@/domain/notes-view";
-import { Mascot } from "@/design/Mascot";
+import { MascotHero } from "@/design/mascot3d/MascotHero";
+import { useWornOutfit } from "@/components/shell/use-mascot-expression";
 import { projectColor } from "@/design/palette";
 import { useI18n } from "@/i18n/I18nProvider";
 import { cn } from "@/lib/cn";
@@ -61,6 +62,7 @@ export function NotesLens() {
   const react = useFeedback((s) => s.react);
   const kind = usePrefs((s) => s.mascot);
   const tracks = usePrefs((s) => s.mascotTracks);
+  const worn = useWornOutfit();
   const [query, setQuery] = useState("");
   const [chosen, setChosen] = useState<string | null>(params.get("n"));
   const [summary, setSummary] = useState<{ note: string; text: string; shown: number } | null>(
@@ -510,10 +512,11 @@ export function NotesLens() {
         <aside className="flex min-w-[250px] flex-[0_1_290px] flex-col gap-4">
           <div className="flex flex-col gap-3 rounded-[20px] border border-border bg-surface p-[18px] shadow-card">
             <div className="flex items-center gap-3">
-              <Mascot
+              <MascotHero
                 kind={kind}
-                mood={sum && sum.shown < sum.text.length ? "happy" : "idle"}
-                size={54}
+                expression={sum && sum.shown < sum.text.length ? "thinking" : "idle"}
+                outfit={worn}
+                size={72}
                 track={tracks}
               />
               <span className="text-[13px] leading-[1.45] text-fg-muted">{t("nt.sumPrompt")}</span>

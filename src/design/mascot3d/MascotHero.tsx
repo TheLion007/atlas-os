@@ -8,6 +8,13 @@ import { Mascot } from "../Mascot";
 import type { Outfit } from "./accessories";
 import { expressionForMood, type PipExpression } from "./expressions";
 
+function moodForExpression(e: PipExpression): MascotMood {
+  if (e === "sleeping") return "sleep";
+  if (e === "dancing") return "cheer";
+  if (e === "happy" || e === "greeting") return "happy";
+  return "idle";
+}
+
 // three.js is a heavy, browser-only chunk: it loads only where a 3D mascot is shown.
 const Pip3D = dynamic(() => import("./Pip3D").then((m) => m.Pip3D), { ssr: false });
 
@@ -48,7 +55,15 @@ export function MascotHero({
     return () => cancelAnimationFrame(id);
   }, []);
 
-  if (gl === false) return <Mascot kind={kind} mood={mood} size={size} track={track} />;
+  if (gl === false)
+    return (
+      <Mascot
+        kind={kind}
+        mood={expression ? moodForExpression(expression) : mood}
+        size={size}
+        track={track}
+      />
+    );
   if (gl === null)
     return <div aria-hidden="true" style={{ width: size, height: size, flex: "none" }} />;
   return (

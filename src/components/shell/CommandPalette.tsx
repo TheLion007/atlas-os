@@ -4,7 +4,7 @@ import * as Dialog from "@radix-ui/react-dialog";
 import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent } from "react";
 import { useI18n } from "@/i18n/I18nProvider";
 import { cn } from "@/lib/cn";
-import { Mascot } from "@/design/Mascot";
+import { MascotHero } from "@/design/mascot3d/MascotHero";
 import { usePrefs } from "@/lib/feedback/prefs";
 import { Icon } from "../ui/Icon";
 import { TypeGlyph } from "../ui/TypeGlyph";
@@ -220,7 +220,7 @@ export function CommandPalette({
                 t("palette.loading")
               ) : (
                 <>
-                  <Mascot kind={mascot} mood="sleep" size={60} track={false} />
+                  <MascotHero kind={mascot} expression="sleeping" size={72} track={false} />
                   {mode === "action-mode" ? t("palette.noAction") : t("palette.nothing")}
                 </>
               )}

@@ -7,7 +7,8 @@ import { useEffect, useRef, useState } from "react";
 import { describeWriteError, useGraph, useProgress, useRemoveExamples } from "@/client/hooks";
 import { useSource } from "@/client/provider";
 import { isExample } from "@/domain/creation";
-import { Mascot } from "@/design/Mascot";
+import { useWornOutfit } from "@/components/shell/use-mascot-expression";
+import { MascotHero } from "@/design/mascot3d/MascotHero";
 import { PAIR_SWATCH } from "@/design/palette";
 import { LOCALES, LOCALE_NAME } from "@/i18n/core";
 import { useI18n } from "@/i18n/I18nProvider";
@@ -150,6 +151,7 @@ const key =
 export function SettingsLens() {
   const { t, locale, setLocale } = useI18n();
   const prefs = usePrefs();
+  const worn = useWornOutfit();
   const systemReduced = useMediaQuery("(prefers-reduced-motion: reduce)");
   const params = useSearchParams();
   const graph = useGraph();
@@ -499,7 +501,13 @@ export function SettingsLens() {
                   prefs.mascot === id ? "border-accent" : "border-border",
                 )}
               >
-                <Mascot kind={id} size={64} track={prefs.mascotTracks} />
+                <MascotHero
+                  kind={id}
+                  expression="idle"
+                  outfit={worn}
+                  size={84}
+                  track={prefs.mascotTracks}
+                />
                 <span className="font-display text-[19px] font-bold">{t(`feel.mascot.${id}`)}</span>
                 <span className="text-[12px] leading-[1.4] text-fg-subtle">{t(`st.${id}`)}</span>
                 <span
